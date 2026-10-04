@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "monterey-desktop": {
+      "command": "./scripts/start.sh",
+      "args": [],
+      "cwd": "."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+mcp==1.30.0
+Pillow>=11,<13
+# Newer cryptography builds lack a prebuilt wheel for this Intel Monterey host.
+cryptography>=46,<49
+
+# Native Accessibility and in-memory capture, compatible wheels for Monterey/Python 3.12.
+pyobjc-core==10.3.2
+pyobjc-framework-Cocoa==10.3.2
+pyobjc-framework-CoreText==10.3.2
+pyobjc-framework-ApplicationServices==10.3.2
+pyobjc-framework-Quartz==10.3.2

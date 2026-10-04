@@ -1,0 +1,20 @@
+{
+  "name": "monterey-desktop",
+  "interface": {
+    "displayName": "Monterey Desktop"
+  },
+  "plugins": [
+    {
+      "name": "monterey-desktop",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

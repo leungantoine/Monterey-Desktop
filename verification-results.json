@@ -1,0 +1,141 @@
+{
+  "live_safari_checks": "passed; installed v1.6.1 browser tools against owned localhost fixture",
+  "installed_mcp_checks": "passed",
+  "timing_medians_ms": {
+    "old_image_ms": 734,
+    "new_image_ms": 263,
+    "new_observe_ms": 311
+  },
+  "timing_samples": {
+    "old_image_ms": [
+      744,
+      728,
+      734
+    ],
+    "new_image_ms": [
+      283,
+      263,
+      257
+    ],
+    "new_observe_ms": [
+      969,
+      311,
+      309
+    ]
+  },
+  "scope": "Same Mac/display; screenshot capture and local observation, excludes model/network latency.",
+  "moved_window_guard": "passed",
+  "codex_strict_config_and_skill_discovery": "passed",
+  "version": "1.6.1",
+  "open_source_upgrade": {
+    "live_safari": "passed",
+    "two_window_targeting": "passed",
+    "same_app_wrong_window_guard": "passed",
+    "supported_actions_and_batch_rejection": "passed",
+    "observed_state_changes": "passed",
+    "inconclusive_no_change": "passed",
+    "secure_redaction_and_identity_limits": "passed",
+    "original_regressions": "passed",
+    "date": "2026-10-03"
+  },
+  "background_upgrade": {
+    "date": "2026-10-03",
+    "macos": "12.7.6",
+    "native_field_focus_and_unicode": "passed",
+    "shortcuts_and_verified_value": "passed",
+    "native_press_and_readiness": "passed",
+    "targeted_drag_and_scroll": "passed",
+    "foreground_app_and_pointer_preserved": "passed",
+    "simultaneous_foreground_and_background_typing": "passed",
+    "live_focus_after_tab_and_secure_field_refusal": "passed",
+    "two_safari_window_isolation": "passed",
+    "whole_batch_activation_rejection": "passed",
+    "target_foreground_takeover_yields": "passed",
+    "original_foreground_regressions": "passed",
+    "state_feedback_regressions": "passed",
+    "skill_validation_and_dependencies": "passed",
+    "installed_mcp": "passed",
+    "cross_spaces": "unsupported; not tested",
+    "scope": "Disposable Safari/native AppKit fixtures on the active Space. Private background transport is Monterey-only; other apps are not verified.",
+    "test_environment": "Initial repeat runs could not confirm foreground input with Mission Control open; another run failed the stationary-pointer assertion. The final run passed with Mission Control closed and the pointer stationary."
+  },
+  "space_upgrade": {
+    "date": "2026-10-03",
+    "macos": "12.7.6",
+    "default_active_space_discovery_and_target_rejection": "passed",
+    "active_space_switch_invalidates_frame": "passed",
+    "explicit_all_space_discovery_and_window_pin": "passed",
+    "unseen_off_space_window_visual_typing": "passed",
+    "off_space_capture_fresh_rendered_pixels": "passed",
+    "off_space_foreground_input_refused": "passed",
+    "retained_native_ax_handles_across_spaces": "passed",
+    "off_space_unicode_shortcuts_verified_value_and_readiness": "passed",
+    "off_space_drag_and_scroll": "passed",
+    "simultaneous_other_space_user_typing_isolated": "passed",
+    "foreground_pointer_and_active_space_preserved": "passed",
+    "native_live_focus_and_secure_field_checks": "passed",
+    "same_space_background_regressions": "passed",
+    "original_foreground_regressions": "passed",
+    "state_feedback_regressions": "passed",
+    "skill_validation": "passed",
+    "installed_mcp": "passed",
+    "scope": "Safari and disposable native AppKit fixtures on two existing desktop Spaces of this Monterey Mac. Foreground app must differ from target app. Fullscreen/multiple displays and other apps not verified.",
+    "setup": "Observed Mission Control buttons switch Spaces for test setup/cleanup only. Production Space queries are read-only. Labels use IDs rather than assuming Mission Control Desktop N ordering."
+  },
+  "efficiency_upgrade": {
+    "date": "2026-10-03",
+    "native_first_and_explicit_visual_overrides": "passed",
+    "compact_full_compatibility_and_filtered_fresh_ids": "passed",
+    "replacement_unicode_empty_and_selection_preservation": "passed",
+    "native_read_long_text_alt_text_secure_omission_pagination": "passed",
+    "one_call_open_wait_and_read": "passed",
+    "state_feedback_long_suffix_and_privacy": "passed",
+    "original_foreground_regressions": "passed",
+    "skill_validation": "passed",
+    "measurements": {
+      "legacy_observe_text_chars": 18506,
+      "compact_observe_text_chars": 8700,
+      "legacy_action_text_chars": 19675,
+      "compact_action_text_chars": 7674,
+      "filtered_observe_text_chars": 2489,
+      "scanned_controls": 43,
+      "native_read_ms": 3,
+      "native_read_chars": 6654,
+      "open_wait_and_read_ms": 208
+    },
+    "scope": "Same native metadata, legacy default JSON versus compact Unicode JSON; text characters, not billed tokens. Local disposable Safari message fixture; timings exclude model/network latency. Actual Gmail/Outlook pages not benchmarked.",
+    "same_space_background_regressions": "passed",
+    "cross_space_background_and_visual_fallback_regressions": "passed",
+    "dependencies": "passed",
+    "installed_mcp_launcher": "passed",
+    "installed_measurements": {
+      "legacy_observe_text_chars": 14392,
+      "compact_observe_text_chars": 6847,
+      "legacy_action_text_chars": 19628,
+      "compact_action_text_chars": 7674,
+      "native_read_ms": 6,
+      "native_read_chars": 6654,
+      "open_wait_and_read_ms": 182
+    },
+    "skill_entrypoint_chars": {
+      "v1_4": 11431,
+      "v1_5": 7617
+    },
+    "installed_scope": "Actual installed scripts/start.sh via MCP protocol; same disposable local Safari fixtures; excludes model/network latency."
+  },
+  "browser_upgrade": {
+    "date": "2026-10-03",
+    "offline_bridge_tests": 12,
+    "jxa_runtime_mocked_app": "passed; expressions/IIFE/Unicode/scalars/undefined/URL guards",
+    "offline_mcp_wrapper": "passed; active/all window filtering, bounds mapping, explicit targets, changed URL refusal, partial mutation invalidation, truncation, pause/locked refusal",
+    "source_mcp_discovery": "passed; six tools and browser schema",
+    "native_feedback_and_presentation_regressions": "passed",
+    "dependencies_and_skill_links": "passed",
+    "live_browser": "passed; discovery/text/links/Unicode DOM fill and click/exact-tab navigation/readiness/target and URL guards/stale native frame refusal/output truncation/page exception and partial mutation reporting",
+    "scope": "Actual installed MCP launcher and disposable localhost Safari fixture, closed after tests. No real mail mutation during fixture checks. existing signed-in tab confirmed separately. Prior releases cover native/background/Spaces regressions.",
+    "installed_mcp_launcher": "passed; six tools, browser schema/annotations, permission status and unpaused state",
+    "source_cache_match": "passed",
+    "safari_javascript_permission": "verified enabled by successful page execution on existing signed-in Safari tab and localhost fixture",
+    "independent_luna_checks": "passed; twelve offline tests, installed 1.6.1 six-tool schema/annotations, exact source/cache comparison; no Safari actions"
+  }
+}

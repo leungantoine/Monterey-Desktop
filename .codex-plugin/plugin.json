@@ -1,0 +1,19 @@
+{
+  "name": "monterey-desktop",
+  "version": "1.6.1",
+  "description": "Flexible Monterey desktop and Safari automation: native controls, exact-tab DOM scripting, navigation, links, text and visual input.",
+  "author": {
+    "name": "Local"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Monterey Desktop",
+    "shortDescription": "See and operate this Mac\u2019s desktop from Codex",
+    "developerName": "Local",
+    "category": "Productivity",
+    "defaultPrompt": [
+      "Use Monterey Desktop to open Safari and go to Google Classroom."
+    ]
+  }
+}

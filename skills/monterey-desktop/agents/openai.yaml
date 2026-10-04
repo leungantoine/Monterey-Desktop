@@ -1,0 +1,11 @@
+interface:
+  display_name: "Monterey Desktop"
+  short_description: "See and operate this Mac’s desktop from Codex"
+  default_prompt: "Use $monterey-desktop to complete the requested task on my Mac."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "monterey-desktop"
+      description: "Local native macOS screenshot and input tools"
+policy:
+  allow_implicit_invocation: true

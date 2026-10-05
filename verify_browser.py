@@ -279,7 +279,7 @@ class BrowserMcpSourceContractTests(unittest.TestCase):
                             for d in function.decorator_list))
         signature = ast.unparse(function.args)
         compact_signature = "".join(signature.split())
-        self.assertIn("Literal['tabs','read','links','evaluate','navigate']", compact_signature)
+        self.assertIn("Literal['tabs','read','links','evaluate','navigate','navigate_read']", compact_signature)
         for parameter in ("window_id", "tab_index", "script", "url", "space_scope", "max_output_chars"):
             self.assertIn(parameter, signature)
         self.assertIn("max_length=200000", compact_signature)

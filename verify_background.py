@@ -276,6 +276,19 @@ async def verify(url, across_spaces=False):
                 bad = await client.call_tool('desktop_act',{'frame_id':metadata['frame_id'],'mode':'background','actions':[{'kind':'focus','element_id':secret['id']}]})
                 assert bad.isError and 'Secure' in str(bad.content)
                 print('PASS unsupported/activation/secure-field batches rejected before input',flush=True)
+                metadata = await observe()
+                replacement='Plan background café ✓'
+                metadata,picture=decode(await client.call_tool('desktop_plan',{
+                    'frame_id':metadata['frame_id'],'mode':'background','feedback':'controls','steps':[
+                        {'kind':'replace_text','name':'Verification text','role':'AXTextField','text':replacement},
+                        {'kind':'wait_for','name':'Verification text','role':'AXTextField','value_contains':replacement}]}))
+                assert picture is None and metadata['plan']['completed_steps']==2
+                assert named(metadata,'Verification text','AXTextField')['value']==replacement
+                await await_event('input',replacement)
+                assert metadata['front_app']['pid']==fixture.pid and front_app()['pid']==fixture.pid
+                assert desktop.spaces.active_id()==active_space
+                assert Q.CGEventGetLocation(Q.CGEventCreate(None))==pointer
+                print('PASS native background plan resolves fresh controls and preserves foreground/pointer/Space',flush=True)
                 desktop.ui.activate(safari['pid'],lambda:None)
                 bad = await client.call_tool('desktop_act',{'frame_id':metadata['frame_id'],'mode':'background','actions':[{'kind':'scroll','delta_y':1}]})
                 assert bad.isError and 'yields' in str(bad.content)

@@ -1,5 +1,5 @@
 {
-  "live_safari_checks": "passed; installed v1.7.0 browser tools plus foreground/native reading and same-Space background fixtures",
+  "live_safari_checks": "passed; installed v1.8.0 browser workflows, original foreground/native reading, and same-Space background plans/fixtures",
   "installed_mcp_checks": "passed",
   "timing_medians_ms": {
     "old_image_ms": 734,
@@ -26,7 +26,7 @@
   "scope": "Same Mac/display; screenshot capture and local observation, excludes model/network latency.",
   "moved_window_guard": "passed",
   "codex_strict_config_and_skill_discovery": "passed",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "open_source_upgrade": {
     "live_safari": "passed",
     "two_window_targeting": "passed",
@@ -169,5 +169,31 @@
     "native_reading_efficiency_regressions": "passed",
     "installed_browser_regressions": "passed",
     "scope": "Monterey only. Owned localhost Safari/native fixtures. No new claim for other apps, other Spaces, fullscreen or multiple displays."
+  },
+  "workflow_upgrade": {
+    "date": "2026-10-05",
+    "version": "1.8.0",
+    "workflow_results": "workflow-results.json",
+    "offline_tests": 64,
+    "offline_workflow_tests": 23,
+    "offline_browser_tests": 22,
+    "offline_native_readiness_tests": 11,
+    "offline_focus_guard_tests": 8,
+    "browser_navigate_wait_read": "passed; delayed unique visible readiness and scoped complete Unicode text through installed MCP, navigation once",
+    "native_plan_new_controls": "passed; fill/reveal/fill/save/read with fresh selectors and complete outcome text through installed MCP",
+    "partial_plan_stop": "passed; completed press not replayed, completed-step count reported, old frame refused",
+    "shape_target_ambiguity_deadline_guards": "passed; offline no-input and partial-completion cases",
+    "selected_browser_window_scope": "passed; fresh exact PID/window, closed/minimized/unmapped refusal and explicit all-Space scope in offline tests",
+    "native_selector_query_efficiency": "passed; capabilities queried only for a unique matched handle, full traversal/ambiguity checks retained",
+    "full_label_and_identifier_matching": "passed; exact live long labels distinguish identical previews and truncated prefixes do not match",
+    "secure_value_exclusion": "passed; offline/live secure omission and background secure-field refusal",
+    "original_foreground_regressions": "passed; installed v1.8.0 verify.py, seven-tool discovery",
+    "same_space_background_regressions": "passed; installed v1.8.0 including background native plan, foreground/pointer/Space isolation",
+    "native_reading_efficiency_regressions": "passed; installed v1.8.0 compact/full, input callbacks, native reads and one-call open/read",
+    "installed_browser_regressions": "passed; existing exact-tab DOM/navigation/URL/duplicate/partial-error/truncation tests",
+    "dependencies_and_skill_links": "passed",
+    "benchmark_baseline": "v1.7.0, browser split navigation/readiness/read and native best supported batching plus combined final reading",
+    "performance_limits": "Model/network latency not measured. Native plan local median is slower than the best existing two-call batch; reduced calls/context can help total agent time.",
+    "scope": "Monterey 12.7.6 Intel only; owned localhost Safari/native fixtures closed, prior foreground restored. No new live validation of other apps, other Spaces, fullscreen or multiple displays."
   }
 }

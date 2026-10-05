@@ -4,7 +4,7 @@ A personal Codex plugin for this Intel Mac running macOS Monterey. It bundles a 
 
 ## Quick start from GitHub
 
-This repository contains version 1.7.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
+This repository contains version 1.8.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
 
 Create the shared Python environment and install the pinned dependencies:
 
@@ -20,7 +20,7 @@ codex plugin add monterey-desktop@monterey-desktop
 
 Start a new Codex session. Grant Screen Recording and Accessibility to the process hosting the helper when macOS requests them. Safari page scripting also needs **Allow JavaScript from Apple Events** in Safari's developer settings and macOS Automation permission. Enabling that preference can require local Touch ID or password authentication.
 
-The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.7.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
+The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.8.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
 
 Run the offline checks from the cloned repository:
 
@@ -28,6 +28,8 @@ Run the offline checks from the cloned repository:
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_browser.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_feedback.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_native_wait.py
+"$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_focus_guards.py
+"$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_workflows.py
 ```
 
 Live desktop tests create temporary fixtures and interact with Safari. Their details and limitations are documented below.
@@ -37,7 +39,7 @@ Live desktop tests create temporary fixtures and interact with Safari. Their det
 - Editable plugin source: `~/.codex/plugins/monterey-desktop/`.
 - Bundled instructions: `skills/monterey-desktop/SKILL.md`.
 - Personal marketplace: `~/.agents/plugins/marketplace.json`, named `personal-local`.
-- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.7.0/`.
+- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.8.0/`.
 - Python environment and shared pause state: `~/.local/share/monterey-desktop/`.
 
 Codex loads its installed copy. Edit the source, then run the plugin add command below to refresh that copy. The virtual environment stays outside the plugin cache so reinstalls do not relocate Python or duplicate dependencies.
@@ -45,6 +47,10 @@ Codex loads its installed copy. Edit the source, then run the plugin add command
 ## Use
 
 Start a new Codex session after installation. Ask: “Use Monterey Desktop to open Safari and go to Google Classroom.” The skill can be selected explicitly or discovered for local desktop tasks.
+
+Version 1.8.0 reduces agent round trips for complete tasks. `desktop_browser(operation="navigate_read")` navigates once, waits for an explicit visible selector/text condition, and returns scoped text in one call. New `desktop_plan` resolves unique native selectors afresh between UI changes, allowing newly revealed controls to be filled or pressed without intermediate observations. Plans require an exact pinned window, stop on guard/ambiguity/deadline errors, report partial completion, and never replay input. They support foreground and explicit background modes, with one final reading/control response. Use only already authorized steps and finish with an expected outcome condition. See [workflow examples](skills/monterey-desktop/references/workflows.md).
+
+The complete fixture benchmarks reduced median browser calls from 3 to 1 and native calls from 2 to 1 against the previous release’s best batching/combined reading; native response text fell by 54%. Browser local time was about 0.61 seconds. Native plans took about 1.4 seconds longer locally, so their benefit depends on removing agent round trips and repeated context. Prefer ordinary ID batches for already exposed controls. End-to-end model time was not measured. Detailed samples and limitations appear in [workflow-results.json](workflow-results.json) and below.
 
 Version 1.7.0 speeds up agent workflows on Monterey. After tab discovery, supply `expected_url` to use one Apple Event per browser operation rather than rediscovering all Safari tabs. Live Space/window, URL, tab-range and duplicate-URL checks still run; permissions, pause/lock state and page content are not cached. Native Unicode typing uses shorter event delays, and per-chunk foreground guards query only the selected window while checking fresh focus/ownership/geometry. Tool descriptions and the skill entrypoint are shorter and recommend batching, filtered native feedback, and one-call open/read. Benchmarks and test scope are recorded in `performance-results.json`; they measure local MCP latency, not total model/task latency.
 
@@ -74,7 +80,7 @@ Version 1.2 added exact `window_id` targeting, supported AX actions and writable
 
 Version 1.1 added native Accessibility control IDs, verified field writes, explicit app activation, readiness polling, and selected-window screenshots. `desktop_observe(app_pid=..., max_width=2000)` captures a target window in greater detail; `include_image=false` returns structured controls for semantic workflows. In-memory CoreGraphics capture replaces temporary screenshot files. Read and action tools have explicit MCP annotations.
 
-The plugin exposes `desktop_status`, `desktop_observe`, `desktop_act`, `desktop_read`, `desktop_browser`, and `desktop_pause`. Observe, use fresh native IDs or explicit screenshot coordinates with the returned `frame_id`, and inspect the resulting state. It supports clicks, mouse movement, dragging, Unicode typing, shortcuts, scrolling, waits, and opening http/https URLs in regular Safari with its existing profile. Screenshot width defaults to 1440 pixels and can be increased to 2880. Window offsets and Retina scaling are handled automatically.
+The plugin exposes `desktop_status`, `desktop_observe`, `desktop_act`, `desktop_plan`, `desktop_read`, `desktop_browser`, and `desktop_pause`. Observe, use fresh native IDs or explicit screenshot coordinates with the returned `frame_id`, and inspect the resulting state. It supports clicks, mouse movement, dragging, Unicode typing, shortcuts, scrolling, waits, and opening http/https URLs in regular Safari with its existing profile. Screenshot width defaults to 1440 pixels and can be increased to 2880. Window offsets and Retina scaling are handled automatically.
 
 The default `mode="foreground"` operates the real foreground desktop and stops when the expected app loses focus, another window of the same app gains focus, or a selected capture window moves/resizes. In that mode, `focus` raises the control's window and `set_value` may activate it if necessary. Use `mode="background"` explicitly for every batch while the user works in another app. Observe an exact `window_id` first; supply the observed field's `element_id` to `type` or `key` for precise text targeting. Background `focus` uses a targeted click; observed secure controls, `activate`, and `open_url` are refused. Background value writes cannot activate the app as a fallback. A window on another Space requires background mode.
 
@@ -115,6 +121,8 @@ Removal leaves the source and shared Python environment in place. macOS permissi
 ~/.local/share/monterey-desktop/.venv/bin/python ~/.codex/plugins/monterey-desktop/desktop.py observe --output /tmp/desktop.jpg
 ```
 
+`verify_workflows.py` runs offline workflow failure, fresh-target, complete-shape validation and exact-window/Space regression tests. `verify_workflows_live.py` compares split operations with the composite browser/native workflows through actual MCP launchers on owned localhost fixtures. It verifies delayed content, newly revealed fields, Unicode input callbacks, completed outcome text, secure omission, and partial-plan no-replay/frame invalidation. It closes its fixture and restores the prior foreground app/window. Use `--baseline-root <v1.7.0-directory> --root <installed-directory> --output <results.json>` to reproduce the comparison.
+
 `verify_speed.py` benchmarks guarded Safari reads/evaluations and 800-character Unicode replacement through the actual MCP launcher. It verifies complete field values and input callbacks, closes its owned fixture, and restores the prior foreground app/window. Use `--root` to compare another plugin directory and `--output` to save results. `verify_focus_guards.py` checks fresh selected-window geometry/owner/focus and Space/takeover refusal without input.
 
 `verify_efficiency.py` checks compact/full compatibility, fresh filtered IDs, Unicode/empty replacement, selection preservation, native-first screenshots, full long message text and image descriptions, secure omission, pagination, and one-call open/read against disposable localhost Safari fixtures. It restores the foreground and closes its fixtures afterward. Raw text-size measurements compare the same native metadata; local action timings exclude model/network latency.
@@ -154,6 +162,17 @@ Packaging follows [OpenAI’s local plugin layout](https://developers.openai.com
 `wait_for` polls a unique Accessibility selector (name, role, value substring, enabled state) within a bounded timeout. `settle_seconds` checks visual stability; a stable image can still show a loading page. Prefer a specific readiness condition. UI traversal is bounded; increase `max_elements` or `ui_timeout` when the response says `ui.truncated`.
 
 Native control support varies by app. A native press that fails returns an error so the assistant can inspect the screen before choosing another method. Value writes are read back and verified. Background writes focus the selected field through window-targeted input and fail if the app ignores the write. No automatic coordinate clicking follows a failed native press. Actions can partially run before an error; observe the actual state before continuing. App behavior itself can trigger navigation, dialogs, or app switching, so verify the requested outcome. These improvements do not provide the official app's full desktop isolation, live viewer, or browser/Office integrations.
+
+## Version 1.8.0 complete workflow measurements
+
+Three verified local samples per task through the actual MCP launchers, comparing 1.7.0 split calls with installed 1.8.0. Initial tab/window discovery and native focus setup are excluded consistently. The browser task navigates, waits for delayed message content, and reads its body. The native task fills one field, reveals another, fills it, saves, waits for the result, and reads final text.
+
+| Task | Calls before → after | Response characters before → after | Local median before → after |
+| --- | ---: | ---: | ---: |
+| Navigate/wait/read | 3 → 1 | 607 → 404 | 641.1 → 608.0 ms |
+| Native form/save/read | 2 → 1 | 14,465 → 6,587 | 1,868.2 → 3,257.9 ms |
+
+The native baseline batches all initially exposed controls in the first call, then fills/saves/waits/reads in the second call. Composite execution has extra local work for fresh selectors and explicit outcome guards. Its measured native overhead was 1,390 ms while removing one agent round trip. As an inference from these samples, it can save total time when that removed round trip and reduced context processing cost more than the overhead; model reasoning/network time was not measured. Keep using ordinary ID batches for controls already exposed. Selector plans help when later controls appear and another model decision is unnecessary. Response sizes are characters rather than billed tokens. These fixtures do not establish performance on real mail pages or other apps. Full samples and scope are in [workflow-results.json](workflow-results.json).
 
 ## Version 1.7.0 local performance
 

@@ -118,7 +118,7 @@ async def verify(server):
         async with ClientSession(read, write) as client:
             await client.initialize()
             names = {t.name for t in (await client.list_tools()).tools}
-            assert names == {'desktop_status', 'desktop_observe', 'desktop_act', 'desktop_read', 'desktop_browser', 'desktop_pause'}, names
+            assert names == {'desktop_status', 'desktop_observe', 'desktop_act', 'desktop_read', 'desktop_browser', 'desktop_plan', 'desktop_pause'}, names
             print('PASS MCP initialization and tool discovery', flush=True)
             status, _ = decode(await client.call_tool('desktop_status'))
             assert status['screen_recording'] and status['accessibility'] and not status['paused'], status

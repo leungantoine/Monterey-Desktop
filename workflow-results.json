@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-05",
+  "baseline_version": "1.7.0",
+  "optimized_version": "1.8.0",
+  "baseline": {
+    "browser": {
+      "runs": [
+        {
+          "elapsed_ms": 592.8,
+          "tool_calls": 3,
+          "response_chars": 607
+        },
+        {
+          "elapsed_ms": 870.5,
+          "tool_calls": 4,
+          "response_chars": 711
+        },
+        {
+          "elapsed_ms": 641.1,
+          "tool_calls": 3,
+          "response_chars": 607
+        }
+      ],
+      "median_ms": 641.1,
+      "median_tool_calls": 3,
+      "median_response_chars": 607
+    },
+    "native": {
+      "runs": [
+        {
+          "elapsed_ms": 1914.7,
+          "tool_calls": 2,
+          "response_chars": 14465
+        },
+        {
+          "elapsed_ms": 1864.3,
+          "tool_calls": 2,
+          "response_chars": 14465
+        },
+        {
+          "elapsed_ms": 1868.2,
+          "tool_calls": 2,
+          "response_chars": 14465
+        }
+      ],
+      "median_ms": 1868.2,
+      "median_tool_calls": 2,
+      "median_response_chars": 14465
+    }
+  },
+  "optimized": {
+    "browser": {
+      "runs": [
+        {
+          "elapsed_ms": 463.0,
+          "tool_calls": 1,
+          "response_chars": 404
+        },
+        {
+          "elapsed_ms": 615.0,
+          "tool_calls": 1,
+          "response_chars": 404
+        },
+        {
+          "elapsed_ms": 608.0,
+          "tool_calls": 1,
+          "response_chars": 404
+        }
+      ],
+      "median_ms": 608.0,
+      "median_tool_calls": 1,
+      "median_response_chars": 404
+    },
+    "native": {
+      "runs": [
+        {
+          "elapsed_ms": 3257.9,
+          "tool_calls": 1,
+          "response_chars": 6587
+        },
+        {
+          "elapsed_ms": 3436.8,
+          "tool_calls": 1,
+          "response_chars": 6587
+        },
+        {
+          "elapsed_ms": 3234.4,
+          "tool_calls": 1,
+          "response_chars": 6587
+        }
+      ],
+      "median_ms": 3257.9,
+      "median_tool_calls": 1,
+      "median_response_chars": 6587
+    }
+  },
+  "scope": "Complete local task latency and MCP call/response counts on owned Safari fixtures. Initial discovery/navigation/focus setup shared and excluded. Model reasoning/network time not measured.",
+  "baseline_native_strategy": "Two desktop_act batches: fill/reveal, then fill/save/wait with feedback=text. All initially exposed controls batched; no separate read call.",
+  "optimized_native_strategy": "One desktop_plan resolving five fresh selectors and returning final reading."
+}

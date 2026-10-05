@@ -44,6 +44,46 @@ class NativeReadinessTests(unittest.TestCase):
         node = self.wait('READY_AT_END')
         self.assertEqual(node['id'], 'e1')
 
+    def test_selector_scan_queries_only_unique_target_capabilities(self):
+        self.fields['root']={'AXRole':'AXGroup','AXChildren':['field','other']}
+        self.fields['other']={'AXRole':'AXButton','AXTitle':'Other','AXChildren':[]}
+        self.ui.window=lambda *args:'root'
+        with patch.object(native_ui.AX,'AXUIElementCopyActionNames',return_value=(0,['AXPress'])) as actions:
+            snapshot,refs,node=self.ui.find_unique(123,None,'AXTextArea','READY_AT_END',None,.03,
+                                                   lambda:None,selector_only=True)
+        actions.assert_called_once_with('field',None)
+        self.assertEqual(node['actions'],['AXPress'])
+        self.assertTrue(node['value_settable'])
+        self.assertNotIn('actions',snapshot['elements'][0])
+        self.assertIs(refs[node['id']][1],node)
+
+    def test_long_live_labels_disambiguate_identical_previews(self):
+        prefix='x'*500
+        self.fields['field']['AXTitle']=prefix+'first'
+        self.fields['root']={'AXRole':'AXGroup','AXChildren':['field','other']}
+        self.fields['other']=dict(self.fields['field'],AXTitle=prefix+'second')
+        self.ui.window=lambda *args:'root'
+        _,_,node=self.ui.find_unique(123,prefix+'first','AXTextArea',None,None,.03,lambda:None)
+        self.assertEqual(node['id'],'e1')
+
+    def test_truncated_label_or_identifier_is_not_an_exact_match(self):
+        prefix='x'*500
+        self.fields['field'].update(AXTitle=prefix+'suffix',AXIdentifier=prefix+'suffix')
+        for kwargs in ({'name':prefix},{'identifier':prefix}):
+            with self.subTest(kwargs=kwargs),self.assertRaises(TimeoutError):
+                self.ui.find_unique(123,kwargs.get('name'),'AXTextArea',None,None,.01,
+                                    lambda:None,identifier=kwargs.get('identifier'))
+
+    def test_ambiguous_selector_scan_never_queries_action_capabilities(self):
+        self.fields['root']={'AXRole':'AXGroup','AXChildren':['field','other']}
+        self.fields['other']=dict(self.fields['field'])
+        self.ui.window=lambda *args:'root'
+        with patch.object(native_ui.AX,'AXUIElementCopyActionNames') as actions:
+            with self.assertRaisesRegex(ValueError,'ambiguous'):
+                self.ui.find_unique(123,None,'AXTextArea','READY_AT_END',None,.03,
+                                    lambda:None,selector_only=True)
+        actions.assert_not_called()
+
     def test_duplicate_full_values_remain_ambiguous(self):
         self.fields['root'] = {'AXRole': 'AXGroup', 'AXChildren': ['field', 'other']}
         self.fields['other'] = dict(self.fields['field'])

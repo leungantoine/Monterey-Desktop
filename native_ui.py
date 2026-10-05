@@ -78,6 +78,16 @@ def bounds_of(attributes):
     return None
 
 
+def add_capabilities(element, node):
+    error, actions = AX.AXUIElementCopyActionNames(element, None)
+    if not error and actions is not None:
+        node['actions'] = [str(action) for action in actions][:30]
+    if node['role'] in ('AXTextField', 'AXTextArea', 'AXComboBox', 'AXSlider', 'AXCheckBox'):
+        error, settable = AX.AXUIElementIsAttributeSettable(element, 'AXValue', None)
+        if not error:
+            node['value_settable'] = bool(settable)
+
+
 def describe(element, capabilities=False):
     error, values = AX.AXUIElementCopyMultipleAttributeValues(element, ATTRIBUTES, 0, None)
     if error or values is None:
@@ -113,13 +123,7 @@ def describe(element, capabilities=False):
     if bounds:
         node['bounds'] = bounds
     if capabilities:
-        error, actions = AX.AXUIElementCopyActionNames(element, None)
-        if not error and actions is not None:
-            node['actions'] = [str(action) for action in actions][:30]
-        if role in ('AXTextField', 'AXTextArea', 'AXComboBox', 'AXSlider', 'AXCheckBox'):
-            error, settable = AX.AXUIElementIsAttributeSettable(element, 'AXValue', None)
-            if not error:
-                node['value_settable'] = bool(settable)
+        add_capabilities(element,node)
     children = a.get('AXChildren')
     return node, list(children)[:400] if isinstance(children, (list, tuple)) or hasattr(children, 'count') and hasattr(children, '__iter__') else []
 
@@ -198,7 +202,7 @@ class NativeUI:
         if not actual or any(abs(actual[k]-bounds[k]) > 1 for k in bounds):
             raise RuntimeError('Selected window is not the focused window. Observe and focus its control before keyboard or positional input.')
 
-    def snapshot(self, pid, check, limit=400, seconds=2, window_bounds=None, window_id=None):
+    def snapshot(self, pid, check, limit=400, seconds=2, window_bounds=None, window_id=None, capabilities=True):
         root = self.window(pid, window_bounds, window_id)
         queue = deque([(root, None, 0)])
         nodes, references, visited = [], {}, set()
@@ -211,7 +215,7 @@ class NativeUI:
             if identity in visited:
                 continue
             visited.add(identity)
-            node, children = describe(element, capabilities=True)
+            node, children = describe(element, capabilities=capabilities)
             if node is None:
                 incomplete = True
                 continue
@@ -356,17 +360,30 @@ class NativeUI:
         # focused window on another Space cannot redirect the activation.
         self.activate(before['pid'], check)
 
-    def wait_for(self, pid, name, role, value_contains, enabled, timeout, check, window_bounds=None, window_id=None):
+    def find_unique(self, pid, name, role, value_contains, enabled, timeout, check, window_bounds=None, window_id=None, identifier=None, selector_only=False):
         deadline = time.monotonic()+timeout
+        def exact_label(node,element,key,attribute,expected):
+            value=node.get(key)
+            if node.get(key+'_omitted_chars'):
+                check()
+                if time.monotonic()>=deadline:
+                    raise TimeoutError('The requested UI condition did not become ready before timeout.')
+                value=get_attr(element,attribute)
+            return value==expected
         while True:
             check()
-            snapshot, references = self.snapshot(pid, check, limit=1000, seconds=min(2, max(0.01, deadline-time.monotonic())), window_bounds=window_bounds, window_id=window_id)
+            snapshot, references = self.snapshot(pid, check, limit=1000, seconds=min(2, max(0.01, deadline-time.monotonic())), window_bounds=window_bounds, window_id=window_id, capabilities=not selector_only)
             matches = []
             values_complete = True
             for node in snapshot['elements']:
-                if ((name is not None and name not in (node.get('name'), node.get('description'), node.get('help')))
-                        or (role is not None and node['role'] != role)
+                if ((role is not None and node['role'] != role)
                         or (enabled is not None and node.get('enabled') != enabled)):
+                    continue
+                element, _ = references[node['id']]
+                if name is not None and not any(exact_label(node,element,key,attribute,name)
+                        for key,attribute in (('name','AXTitle'),('description','AXDescription'),('help','AXHelp'))):
+                    continue
+                if identifier is not None and not exact_label(node,element,'identifier','AXIdentifier',identifier):
                     continue
                 if value_contains is not None:
                     if time.monotonic() >= deadline:
@@ -374,7 +391,6 @@ class NativeUI:
                         break
                     # Observation previews are bounded; readiness must inspect
                     # the complete live value without returning it to the caller.
-                    element, _ = references[node['id']]
                     subrole = get_attr(element, 'AXSubrole')
                     if 'Secure' in node.get('subrole', '') or 'Secure' in str(subrole or ''):
                         continue
@@ -384,12 +400,22 @@ class NativeUI:
                         continue
                 matches.append(node)
             if len(matches) == 1 and not snapshot['truncated'] and values_complete:
-                return matches[0]
+                if selector_only:
+                    check()
+                    # Scan labels/state for uniqueness, then query capabilities
+                    # only on the matched live handle needed by the next action.
+                    add_capabilities(references[matches[0]['id']][0],matches[0])
+                    check()
+                return snapshot, references, matches[0]
             if len(matches) > 1:
                 raise ValueError('Readiness selector is ambiguous. Supply a more specific name/role/value.')
             if time.monotonic() >= deadline:
                 raise TimeoutError('The requested UI condition did not become ready before timeout.')
             time.sleep(min(0.1, max(0, deadline-time.monotonic())))
+
+    def wait_for(self, pid, name, role, value_contains, enabled, timeout, check, window_bounds=None, window_id=None):
+        _, _, node = self.find_unique(pid,name,role,value_contains,enabled,timeout,check,window_bounds,window_id)
+        return node
 
 
 def capture(window_id=None):

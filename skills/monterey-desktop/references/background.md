@@ -16,4 +16,3 @@ Inspect `action_results` for delivery and effect, `background_safety` for foregr
 ```
 
 For another Space, first call `desktop_observe(space_scope="all")`, then `desktop_observe(window_id=<selected ID>, space_scope="all")`. Use `mode="background"` with the returned frame. Without the explicit scope, observations remain on the active Space; without background mode, an off-Space target is refused.
-

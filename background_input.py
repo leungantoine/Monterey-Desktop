@@ -14,6 +14,7 @@ import objc
 import Quartz as Q
 
 from native_ui import ProcessSerialNumber
+from input_timing import TEXT_KEY_HOLD_SECONDS, TEXT_CHUNK_INTERVAL_SECONDS
 
 
 class BackgroundInput:
@@ -143,11 +144,11 @@ class BackgroundInput:
                 Q.CGEventKeyboardSetUnicodeString(event, units, chunk)
             try:
                 Q.CGEventPostToPid(pid, down)
-                time.sleep(0.04)
+                time.sleep(TEXT_KEY_HOLD_SECONDS)
                 check()
             finally:
                 Q.CGEventPostToPid(pid, up)
-            time.sleep(0.06)
+            time.sleep(TEXT_CHUNK_INTERVAL_SECONDS)
             check()
 
     def key(self, pid, window_id, code, flags, check):

@@ -292,5 +292,110 @@ class BrowserMcpSourceContractTests(unittest.TestCase):
         self.assertIn("openWorldHint=True", annotations)
 
 
+@unittest.skipUnless(Path('/System/Library/Frameworks/AppKit.framework').exists(), 'Requires macOS desktop modules')
+class BrowserTargetCacheTests(unittest.TestCase):
+    def setUp(self):
+        import desktop as module
+        self.module=module
+        self.registered={}
+        registered=self.registered
+        class Server:
+            def tool(self,**kwargs):
+                def decorate(function):
+                    registered[function.__name__]=function
+                    return function
+                return decorate
+            def run(self,**kwargs):
+                pass
+        self.url='https://example.test/one'
+        self.browser=Mock()
+        self.browser.tabs.return_value=[{'window_id':91,'bounds':{'x':0,'y':0,'width':100,'height':100},
+            'tabs':[{'tab_index':1,'url':self.url}]}]
+        self.browser.read_dom.return_value={'text':'fixture'}
+        self.browser.collect_links.return_value={'links':[]}
+        self.browser.evaluate.return_value=42
+        self.browser.navigate.return_value={'url':'https://example.test/two'}
+        self.windows=[{'pid':123,'window_id':191,'space_ids':[1],
+                       'bounds':{'X':0,'Y':0,'Width':100,'Height':100}}]
+        self.apps=[{'pid':123,'bundle_id':'com.apple.Safari'}]
+        self.companion=SimpleNamespace(lock=threading.RLock(),check=Mock(),frame='before',
+            references={'before':True},read_cache='before',windows=lambda scope:self.windows)
+        self.locked={}
+        patches=[patch('mcp.server.fastmcp.FastMCP',return_value=Server()),
+            patch.object(module,'SafariBrowser',return_value=self.browser),
+            patch.object(module,'running_apps',side_effect=lambda:self.apps),
+            patch.object(module.Q,'CGSessionCopyCurrentDictionary',side_effect=lambda:self.locked)]
+        for mocked in patches:
+            mocked.start()
+            self.addCleanup(mocked.stop)
+        module.mcp_server(self.companion)
+
+    def call(self,operation,**kwargs):
+        return self.registered['desktop_browser'](operation=operation,window_id=91,tab_index=1,
+            max_output_chars=30000,**kwargs)
+
+    def test_explicit_url_reuses_window_mapping_without_relisting_tabs(self):
+        self.call('tabs')
+        self.call('read',expected_url=self.url)
+        self.call('links',expected_url=self.url)
+        self.call('evaluate',expected_url=self.url,script='42')
+        self.assertEqual(self.browser.tabs.call_count,1)
+        self.browser.evaluate.assert_called_once_with(91,1,'42',self.url)
+        self.assertEqual(self.companion.frame,None)
+        self.assertEqual(self.companion.references,{})
+        self.assertEqual(self.companion.read_cache,None)
+
+    def test_without_expected_url_rediscovers_live_tabs(self):
+        self.call('tabs')
+        self.call('read')
+        self.assertEqual(self.browser.tabs.call_count,2)
+        self.browser.read_dom.assert_called_once_with(91,1,self.url)
+
+    def test_navigation_next_url_is_verified_live_instead_of_using_stale_metadata(self):
+        self.call('tabs')
+        new_url='https://example.test/two'
+        self.call('navigate',expected_url=self.url,url=new_url)
+        self.call('read',expected_url=new_url)
+        self.assertEqual(self.browser.tabs.call_count,1)
+        self.browser.navigate.assert_called_once_with(91,1,new_url,self.url)
+        self.browser.read_dom.assert_called_once_with(91,1,new_url)
+
+    def test_missing_or_other_space_window_is_refused_before_page_code(self):
+        self.call('tabs')
+        self.windows=[]
+        with self.assertRaisesRegex(ValueError,'Space scope'):
+            self.call('evaluate',expected_url=self.url,script='42')
+        self.browser.evaluate.assert_not_called()
+        self.assertEqual(self.companion.frame,'before')
+
+    def test_changed_process_is_refused_even_if_window_number_is_reused(self):
+        self.call('tabs')
+        self.apps=[{'pid':124,'bundle_id':'com.apple.Safari'}]
+        self.windows[0]['pid']=124
+        with self.assertRaisesRegex(ValueError,'unavailable'):
+            self.call('evaluate',expected_url=self.url,script='42')
+        self.browser.evaluate.assert_not_called()
+
+    def test_live_url_error_propagates_and_mutation_frame_remains_invalid(self):
+        self.call('tabs')
+        self.browser.evaluate.side_effect=bridge.SafariBridgeError('Safari tab URL changed')
+        with self.assertRaisesRegex(bridge.SafariBridgeError,'URL changed'):
+            self.call('evaluate',expected_url=self.url,script='42')
+        self.assertEqual(self.companion.frame,None)
+        self.assertEqual(self.companion.references,{})
+        self.assertEqual(self.companion.read_cache,None)
+
+    def test_lock_and_pause_guards_still_run_after_discovery(self):
+        self.call('tabs')
+        self.locked={'CGSSessionScreenIsLocked':True}
+        with self.assertRaisesRegex(RuntimeError,'Unlock'):
+            self.call('read',expected_url=self.url)
+        self.locked={}
+        self.companion.check.side_effect=RuntimeError('Computer use is paused')
+        with self.assertRaisesRegex(RuntimeError,'paused'):
+            self.call('read',expected_url=self.url)
+        self.browser.read_dom.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

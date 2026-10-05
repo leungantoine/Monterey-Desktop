@@ -4,7 +4,7 @@ A personal Codex plugin for this Intel Mac running macOS Monterey. It bundles a 
 
 ## Quick start from GitHub
 
-This repository contains version 1.6.2 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
+This repository contains version 1.7.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
 
 Create the shared Python environment and install the pinned dependencies:
 
@@ -20,7 +20,7 @@ codex plugin add monterey-desktop@monterey-desktop
 
 Start a new Codex session. Grant Screen Recording and Accessibility to the process hosting the helper when macOS requests them. Safari page scripting also needs **Allow JavaScript from Apple Events** in Safari's developer settings and macOS Automation permission. Enabling that preference can require local Touch ID or password authentication.
 
-The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.6.2/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
+The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.7.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
 
 Run the offline checks from the cloned repository:
 
@@ -37,7 +37,7 @@ Live desktop tests create temporary fixtures and interact with Safari. Their det
 - Editable plugin source: `~/.codex/plugins/monterey-desktop/`.
 - Bundled instructions: `skills/monterey-desktop/SKILL.md`.
 - Personal marketplace: `~/.agents/plugins/marketplace.json`, named `personal-local`.
-- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.6.2/`.
+- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.7.0/`.
 - Python environment and shared pause state: `~/.local/share/monterey-desktop/`.
 
 Codex loads its installed copy. Edit the source, then run the plugin add command below to refresh that copy. The virtual environment stays outside the plugin cache so reinstalls do not relocate Python or duplicate dependencies.
@@ -45,6 +45,8 @@ Codex loads its installed copy. Edit the source, then run the plugin add command
 ## Use
 
 Start a new Codex session after installation. Ask: “Use Monterey Desktop to open Safari and go to Google Classroom.” The skill can be selected explicitly or discovered for local desktop tasks.
+
+Version 1.7.0 speeds up agent workflows on Monterey. After tab discovery, supply `expected_url` to use one Apple Event per browser operation rather than rediscovering all Safari tabs. Live Space/window, URL, tab-range and duplicate-URL checks still run; permissions, pause/lock state and page content are not cached. Native Unicode typing uses shorter event delays, and per-chunk foreground guards query only the selected window while checking fresh focus/ownership/geometry. Tool descriptions and the skill entrypoint are shorter and recommend batching, filtered native feedback, and one-call open/read. Benchmarks and test scope are recorded in `performance-results.json`; they measure local MCP latency, not total model/task latency.
 
 Version 1.6.2 fixes two Monterey reliability defects. Browser operations refuse a target whose URL is shared by another tab in the same window, both before dispatch and inside the Apple Event, because an index/URL pair cannot distinguish those tabs after reordering. Use native controls for duplicate-URL tabs, or give the intended tab a distinct URL using an authorized task. Native `wait_for(value_contains=...)` searches the full live value rather than its 2,000-character observation preview. Secure fields are excluded from value matching, and returned previews remain bounded. These fixes do not add support for other macOS versions.
 
@@ -113,6 +115,8 @@ Removal leaves the source and shared Python environment in place. macOS permissi
 ~/.local/share/monterey-desktop/.venv/bin/python ~/.codex/plugins/monterey-desktop/desktop.py observe --output /tmp/desktop.jpg
 ```
 
+`verify_speed.py` benchmarks guarded Safari reads/evaluations and 800-character Unicode replacement through the actual MCP launcher. It verifies complete field values and input callbacks, closes its owned fixture, and restores the prior foreground app/window. Use `--root` to compare another plugin directory and `--output` to save results. `verify_focus_guards.py` checks fresh selected-window geometry/owner/focus and Space/takeover refusal without input.
+
 `verify_efficiency.py` checks compact/full compatibility, fresh filtered IDs, Unicode/empty replacement, selection preservation, native-first screenshots, full long message text and image descriptions, secure omission, pagination, and one-call open/read against disposable localhost Safari fixtures. It restores the foreground and closes its fixtures afterward. Raw text-size measurements compare the same native metadata; local action timings exclude model/network latency.
 
 `verify_browser.py` tests browser argument handling, target validation, duplicate-URL refusal at both the MCP and Apple Event boundaries, JSON results, timeouts and errors without sending Safari events. `verify_native_wait.py` tests long-value readiness, suffix disambiguation, incomplete-tree refusal and secure-field exclusion using mocked Accessibility calls without input. Its runtime check executes JXA with a mocked application. `verify_browser_live.py` checks the installed browser tools against an owned localhost Safari window and closes it afterward. It requires Safari scripting permission.
@@ -150,6 +154,18 @@ Packaging follows [OpenAI’s local plugin layout](https://developers.openai.com
 `wait_for` polls a unique Accessibility selector (name, role, value substring, enabled state) within a bounded timeout. `settle_seconds` checks visual stability; a stable image can still show a loading page. Prefer a specific readiness condition. UI traversal is bounded; increase `max_elements` or `ui_timeout` when the response says `ui.truncated`.
 
 Native control support varies by app. A native press that fails returns an error so the assistant can inspect the screen before choosing another method. Value writes are read back and verified. Background writes focus the selected field through window-targeted input and fail if the app ignores the write. No automatic coordinate clicking follows a failed native press. Actions can partially run before an error; observe the actual state before continuing. App behavior itself can trigger navigation, dialogs, or app switching, so verify the requested outcome. These improvements do not provide the official app's full desktop isolation, live viewer, or browser/Office integrations.
+
+## Version 1.7.0 local performance
+
+Measured through the actual MCP launchers on this Monterey Mac. Five warm samples per browser operation and three complete Unicode replacements; values and browser input callbacks were verified.
+
+| Operation | 1.6.2 median | Installed 1.7.0 median | Speedup |
+| --- | ---: | ---: | ---: |
+| Safari read with expected URL | 374.1 ms | 180.5 ms | 2.07× |
+| Safari evaluate with expected URL | 391.6 ms | 183.9 ms | 2.13× |
+| Replace 800 Unicode characters | 9,066.3 ms | 2,676.3 ms | 3.39× |
+
+Tool schemas/descriptions contain 16.1% fewer characters, shared server instructions 51.8% fewer, and the skill entrypoint 30.2% fewer. These are character counts, not billed tokens. Native observation was roughly 0.36–0.40 seconds and did not improve. Measurements exclude model/network latency; apps and page complexity can differ. Full samples, methodology and validation scope are in [performance-results.json](performance-results.json). Run `verify_speed.py --root <plugin-directory> --output <results.json>` to reproduce a comparison.
 
 ## Local verification measurements
 

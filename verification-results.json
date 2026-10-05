@@ -1,5 +1,5 @@
 {
-  "live_safari_checks": "passed; installed v1.6.2 browser and native readiness tools against owned localhost fixture",
+  "live_safari_checks": "passed; installed v1.7.0 browser tools plus foreground/native reading and same-Space background fixtures",
   "installed_mcp_checks": "passed",
   "timing_medians_ms": {
     "old_image_ms": 734,
@@ -26,7 +26,7 @@
   "scope": "Same Mac/display; screenshot capture and local observation, excludes model/network latency.",
   "moved_window_guard": "passed",
   "codex_strict_config_and_skill_discovery": "passed",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "open_source_upgrade": {
     "live_safari": "passed",
     "two_window_targeting": "passed",
@@ -154,5 +154,20 @@
     "fixture_cleanup": "owned localhost Safari window closed in finally",
     "scope": "Two reproduced defects fixed. This is not an exhaustive audit or a new certification of background input, other apps, fullscreen or multiple displays.",
     "tradeoff": "Browser read/links/evaluate/navigate now refuse target URLs duplicated within the selected window. Use native controls for those tabs."
+  },
+  "speed_upgrade": {
+    "date": "2026-10-05",
+    "version": "1.7.0",
+    "performance_results": "performance-results.json",
+    "cached_window_explicit_url_guard": "passed; single-operation path preserves live URL/duplicate/range/Space/window, lock, pause and mutation invalidation guards",
+    "fresh_foreground_window_query": "passed; eight offline focus guard tests and original two-window live isolation checks",
+    "unicode_typing_pacing": "passed; complete 800-character Unicode values and input callbacks in three installed-MCP samples, foreground replacement and same-Space background isolation",
+    "tool_descriptions_and_skill_links": "passed; original schemas preserved and reference links checked",
+    "offline_tests": 37,
+    "original_foreground_regressions": "passed",
+    "same_space_background_regressions": "passed",
+    "native_reading_efficiency_regressions": "passed",
+    "installed_browser_regressions": "passed",
+    "scope": "Monterey only. Owned localhost Safari/native fixtures. No new claim for other apps, other Spaces, fullscreen or multiple displays."
   }
 }

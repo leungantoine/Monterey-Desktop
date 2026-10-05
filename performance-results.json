@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-05",
+  "baseline_version": "1.6.2",
+  "optimized_version": "1.7.0",
+  "baseline_commit": "92c71f211cf61536be47096d7a2932246ac4e081",
+  "macos": "12.7.6",
+  "python": "3.12.5",
+  "baseline": {
+    "samples": 5,
+    "tool_schema_chars": 16926,
+    "shared_instruction_chars": 1164,
+    "browser_read_ms": 374.1,
+    "browser_read_samples_ms": [
+      369.6,
+      379.7,
+      374.1,
+      383.5,
+      370.5
+    ],
+    "browser_evaluate_ms": 391.6,
+    "browser_evaluate_samples_ms": [
+      403.8,
+      387.6,
+      394.5,
+      384.1,
+      391.6
+    ],
+    "native_observe_ms": 363.7,
+    "native_observe_response_chars": 2487,
+    "replace_text_chars": 800,
+    "replace_text_ms": 9066.3,
+    "replace_text_samples_ms": [
+      8993.7,
+      9066.3,
+      9147.3
+    ],
+    "scope": "Actual local MCP round trips on this Monterey Mac; excludes model and network latency. Text values and input callbacks verified in owned Safari fixture."
+  },
+  "optimized_installed": {
+    "samples": 5,
+    "tool_schema_chars": 14205,
+    "shared_instruction_chars": 561,
+    "browser_read_ms": 180.5,
+    "browser_read_samples_ms": [
+      178.2,
+      168.7,
+      180.5,
+      181.2,
+      216.5
+    ],
+    "browser_evaluate_ms": 183.9,
+    "browser_evaluate_samples_ms": [
+      183.9,
+      191.7,
+      173.5,
+      183.3,
+      188.0
+    ],
+    "native_observe_ms": 396.0,
+    "native_observe_response_chars": 2041,
+    "replace_text_chars": 800,
+    "replace_text_ms": 2676.3,
+    "replace_text_samples_ms": [
+      2676.3,
+      2812.4,
+      2349.1
+    ],
+    "scope": "Actual local MCP round trips on this Monterey Mac; excludes model and network latency. Text values and input callbacks verified in owned Safari fixture."
+  },
+  "speedup": {
+    "browser_read_ms": 2.07,
+    "browser_evaluate_ms": 2.13,
+    "replace_text_ms": 3.39
+  },
+  "tool_schema_character_reduction_percent": 16.1,
+  "shared_instruction_character_reduction_percent": 51.8,
+  "skill_entrypoint_chars": {
+    "before": 9455,
+    "after": 6597
+  },
+  "skill_character_reduction_percent": 30.2,
+  "validation": {
+    "offline_browser_tests": 22,
+    "offline_native_readiness_tests": 7,
+    "offline_focus_guard_tests": 8,
+    "state_feedback": "passed",
+    "installed_browser_live": "passed",
+    "native_efficiency_live": "passed",
+    "original_foreground_live": "passed",
+    "same_space_background_live": "passed; simultaneous foreground/background input remained isolated"
+  },
+  "limitations": "Small sequential local samples on owned Safari fixtures; model/network latency and billed tokens excluded. Native observation did not improve. Cross-Space/fullscreen/multiple-display checks were not repeated for this release."
+}

@@ -1,6 +1,6 @@
 {
   "name": "monterey-desktop",
-  "version": "1.6.2",
+  "version": "1.7.0",
   "description": "Flexible Monterey desktop and Safari automation: native controls, exact-tab DOM scripting, navigation, links, text and visual input.",
   "author": {
     "name": "Local"

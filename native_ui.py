@@ -360,13 +360,30 @@ class NativeUI:
         deadline = time.monotonic()+timeout
         while True:
             check()
-            snapshot, _ = self.snapshot(pid, check, limit=1000, seconds=min(2, max(0.01, deadline-time.monotonic())), window_bounds=window_bounds, window_id=window_id)
-            matches = [n for n in snapshot['elements']
-                       if (name is None or name in (n.get('name'), n.get('description'), n.get('help')))
-                       and (role is None or n['role'] == role)
-                       and (value_contains is None or value_contains in n.get('value',''))
-                       and (enabled is None or n.get('enabled') == enabled)]
-            if len(matches) == 1 and not snapshot['truncated']:
+            snapshot, references = self.snapshot(pid, check, limit=1000, seconds=min(2, max(0.01, deadline-time.monotonic())), window_bounds=window_bounds, window_id=window_id)
+            matches = []
+            values_complete = True
+            for node in snapshot['elements']:
+                if ((name is not None and name not in (node.get('name'), node.get('description'), node.get('help')))
+                        or (role is not None and node['role'] != role)
+                        or (enabled is not None and node.get('enabled') != enabled)):
+                    continue
+                if value_contains is not None:
+                    if time.monotonic() >= deadline:
+                        values_complete = False
+                        break
+                    # Observation previews are bounded; readiness must inspect
+                    # the complete live value without returning it to the caller.
+                    element, _ = references[node['id']]
+                    subrole = get_attr(element, 'AXSubrole')
+                    if 'Secure' in node.get('subrole', '') or 'Secure' in str(subrole or ''):
+                        continue
+                    check()
+                    value = get_attr(element, 'AXValue')
+                    if not isinstance(value, (str, int, float, bool)) or value_contains not in str(value):
+                        continue
+                matches.append(node)
+            if len(matches) == 1 and not snapshot['truncated'] and values_complete:
                 return matches[0]
             if len(matches) > 1:
                 raise ValueError('Readiness selector is ambiguous. Supply a more specific name/role/value.')

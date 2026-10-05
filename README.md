@@ -4,7 +4,7 @@ A personal Codex plugin for this Intel Mac running macOS Monterey. It bundles a 
 
 ## Quick start from GitHub
 
-This repository contains version 1.6.1 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
+This repository contains version 1.6.2 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
 
 Create the shared Python environment and install the pinned dependencies:
 
@@ -20,13 +20,14 @@ codex plugin add monterey-desktop@monterey-desktop
 
 Start a new Codex session. Grant Screen Recording and Accessibility to the process hosting the helper when macOS requests them. Safari page scripting also needs **Allow JavaScript from Apple Events** in Safari's developer settings and macOS Automation permission. Enabling that preference can require local Touch ID or password authentication.
 
-The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.6.1/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
+The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.6.2/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
 
 Run the offline checks from the cloned repository:
 
 ```sh
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_browser.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_feedback.py
+"$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_native_wait.py
 ```
 
 Live desktop tests create temporary fixtures and interact with Safari. Their details and limitations are documented below.
@@ -36,7 +37,7 @@ Live desktop tests create temporary fixtures and interact with Safari. Their det
 - Editable plugin source: `~/.codex/plugins/monterey-desktop/`.
 - Bundled instructions: `skills/monterey-desktop/SKILL.md`.
 - Personal marketplace: `~/.agents/plugins/marketplace.json`, named `personal-local`.
-- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.6.1/`.
+- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.6.2/`.
 - Python environment and shared pause state: `~/.local/share/monterey-desktop/`.
 
 Codex loads its installed copy. Edit the source, then run the plugin add command below to refresh that copy. The virtual environment stays outside the plugin cache so reinstalls do not relocate Python or duplicate dependencies.
@@ -44,6 +45,8 @@ Codex loads its installed copy. Edit the source, then run the plugin add command
 ## Use
 
 Start a new Codex session after installation. Ask: “Use Monterey Desktop to open Safari and go to Google Classroom.” The skill can be selected explicitly or discovered for local desktop tasks.
+
+Version 1.6.2 fixes two Monterey reliability defects. Browser operations refuse a target whose URL is shared by another tab in the same window, both before dispatch and inside the Apple Event, because an index/URL pair cannot distinguish those tabs after reordering. Use native controls for duplicate-URL tabs, or give the intended tab a distinct URL using an authorized task. Native `wait_for(value_contains=...)` searches the full live value rather than its 2,000-character observation preview. Secure fields are excluded from value matching, and returned previews remain bounded. These fixes do not add support for other macOS versions.
 
 Version 1.6.1 reports page JavaScript exceptions explicitly, including partial script failures. Live browser checks verify DOM text, links, exact-tab navigation, Unicode input/clicks, wrong-target guards, and output truncation in an owned localhost fixture.
 
@@ -112,7 +115,7 @@ Removal leaves the source and shared Python environment in place. macOS permissi
 
 `verify_efficiency.py` checks compact/full compatibility, fresh filtered IDs, Unicode/empty replacement, selection preservation, native-first screenshots, full long message text and image descriptions, secure omission, pagination, and one-call open/read against disposable localhost Safari fixtures. It restores the foreground and closes its fixtures afterward. Raw text-size measurements compare the same native metadata; local action timings exclude model/network latency.
 
-`verify_browser.py` tests browser argument handling, target validation, JSON results, timeouts and errors without sending Safari events. Its runtime check executes JXA with a mocked application. `verify_browser_live.py` checks the installed browser tools against an owned localhost Safari window and closes it afterward. It requires Safari scripting permission.
+`verify_browser.py` tests browser argument handling, target validation, duplicate-URL refusal at both the MCP and Apple Event boundaries, JSON results, timeouts and errors without sending Safari events. `verify_native_wait.py` tests long-value readiness, suffix disambiguation, incomplete-tree refusal and secure-field exclusion using mocked Accessibility calls without input. Its runtime check executes JXA with a mocked application. `verify_browser_live.py` checks the installed browser tools against an owned localhost Safari window and closes it afterward. It requires Safari scripting permission.
 
 The optional `verify.py` is a live end-to-end test using a temporary localhost Safari fixture. It exercises clicks, Unicode typing, shortcuts, dragging, scrolling, stale-frame rejection, batch validation, pause/resume, named control presses, verified field edits, delayed readiness, ambiguous selectors, secure-field redaction, window coordinates, background presses, app activation, focus guards, supported-action rejection, observed-change evidence, and two-window isolation checks. It changes Safari’s foreground UI and leaves its test page open. Run it only when desktop interaction testing is desired:
 

@@ -11,6 +11,9 @@ import json
 import subprocess
 import sys
 import unittest
+import threading
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +43,33 @@ def completed(stdout: str = "", stderr: str = "", returncode: int = 0) -> subpro
 
 
 class SafariBrowserTests(unittest.TestCase):
+    @unittest.skipUnless(Path('/usr/bin/osascript').exists(), 'Requires macOS JXA')
+    def test_duplicate_url_tabs_are_refused_before_script_or_navigation(self) -> None:
+        mock = '''var tabA={url:function(){return "https://example.test/same";}};
+        var tabB={url:function(){return "https://example.test/same";}};
+        function Application(name) { return {
+          windows:function(){return [{id:function(){return 91;},tabs:function(){return [tabB,tabA];}}];},
+          doJavaScript:function(){throw new Error("UNEXPECTED PAGE EXECUTION");}
+        }; }\n'''
+        browser = bridge.SafariBrowser()
+        for source in (bridge._EVALUATE_SCRIPT, bridge._NAVIGATE_SCRIPT):
+            for expected_url in (None, 'https://example.test/same'):
+                with self.subTest(source=source, expected_url=expected_url):
+                    with self.assertRaisesRegex(bridge.SafariBridgeError, 'URL is ambiguous'):
+                        browser._run(mock + source, '91', '1', 'https://example.test/new', json.dumps(expected_url))
+
+    @unittest.skipUnless(Path('/usr/bin/osascript').exists(), 'Requires macOS JXA')
+    def test_duplicate_urls_elsewhere_do_not_block_a_unique_target(self) -> None:
+        mock = '''var target={tag:"unique",url:function(){return "https://example.test/unique";}};
+        var duplicate={url:function(){return "https://example.test/same";}};
+        function Application(name) { return {
+          windows:function(){return [{id:function(){return 91;},tabs:function(){return [target,duplicate,duplicate];}}];},
+          doJavaScript:function(source,target){return JSON.stringify({ok:true,value:target.in.tag});}
+        }; }\n'''
+        raw = bridge.SafariBrowser()._run(mock + bridge._EVALUATE_SCRIPT, '91', '1', '42',
+                                        json.dumps('https://example.test/unique'))
+        self.assertEqual(json.loads(raw), {'ok':True,'value':'unique'})
+
     @unittest.skipUnless(Path('/usr/bin/osascript').exists(), 'Requires macOS JXA')
     def test_real_jxa_expression_serialization_and_empty_url_guard(self) -> None:
         mock = '''var fakeTab={url:function(){return "https://example.test/current";}};
@@ -204,6 +234,40 @@ class SafariBrowserTests(unittest.TestCase):
 
 
 class BrowserMcpSourceContractTests(unittest.TestCase):
+    @unittest.skipUnless(Path('/System/Library/Frameworks/AppKit.framework').exists(), 'Requires macOS desktop modules')
+    def test_mcp_refuses_duplicate_url_before_mutation_or_frame_invalidation(self) -> None:
+        import desktop as module
+        registered = {}
+        class Server:
+            def tool(self, **kwargs):
+                def decorate(function):
+                    registered[function.__name__] = function
+                    return function
+                return decorate
+            def run(self, **kwargs):
+                pass
+        target_url = 'https://example.test/same'
+        browser = Mock()
+        browser.tabs.return_value = [{'window_id':91, 'tabs':[
+            {'tab_index':1,'url':target_url}, {'tab_index':2,'url':target_url}]}]
+        companion = SimpleNamespace(lock=threading.RLock(), check=Mock(), frame='preserved',
+                                    references={'preserved':True}, read_cache='preserved')
+        companion.windows = lambda scope: [{'pid':123,'window_id':91,'space_ids':[1]}]
+        with patch('mcp.server.fastmcp.FastMCP', return_value=Server()), \
+             patch.object(module, 'SafariBrowser', return_value=browser), \
+             patch.object(module, 'running_apps', return_value=[{'pid':123,'bundle_id':'com.apple.Safari'}]), \
+             patch.object(module.Q, 'CGSessionCopyCurrentDictionary', return_value={}):
+            module.mcp_server(companion)
+            for operation in ('read','links','evaluate','navigate'):
+                with self.subTest(operation=operation), self.assertRaisesRegex(ValueError, 'URL is ambiguous'):
+                    registered['desktop_browser'](operation=operation, window_id=91, tab_index=1,
+                        expected_url=target_url, script='42', url='https://example.test/new')
+        self.assertEqual(companion.frame, 'preserved')
+        browser.evaluate.assert_not_called()
+        browser.navigate.assert_not_called()
+        browser.read_dom.assert_not_called()
+        browser.collect_links.assert_not_called()
+
     def test_browser_tool_schema_contract_and_action_annotations(self) -> None:
         """Check the MCP signature/decorator offline without starting desktop.py."""
         tree = ast.parse((HERE / "desktop.py").read_text())

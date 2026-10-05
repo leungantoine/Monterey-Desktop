@@ -57,6 +57,9 @@ _EVALUATE_SCRIPT = r'''function run(argv) {
         throw new Error("Safari tab index is out of range for window " + windowId + ": " + tabIndex);
     if (expectedURL !== null && String(tabs[tabIndex - 1].url()) !== expectedURL)
         throw new Error("Safari tab URL changed; list tabs before continuing.");
+    var targetURL = String(tabs[tabIndex - 1].url());
+    if (tabs.filter(function(t){return String(t.url()) === targetURL;}).length !== 1)
+        throw new Error("Safari tab URL is ambiguous within this window. Use native controls or give the intended tab a distinct URL before browser scripting.");
     // Serialize inside the page: Apple Events do not reliably transport page
     // objects. Execute the expression directly, without CSP-sensitive eval.
     // Wrap statement sequences in an IIFE: (() => { ...; return result; })().
@@ -83,6 +86,9 @@ _NAVIGATE_SCRIPT = r'''function run(argv) {
         throw new Error("Safari tab index is out of range for window " + windowId + ": " + tabIndex);
     if (expectedURL !== null && String(tabs[tabIndex - 1].url()) !== expectedURL)
         throw new Error("Safari tab URL changed; list tabs before continuing.");
+    var targetURL = String(tabs[tabIndex - 1].url());
+    if (tabs.filter(function(t){return String(t.url()) === targetURL;}).length !== 1)
+        throw new Error("Safari tab URL is ambiguous within this window. Use native controls or give the intended tab a distinct URL before browser scripting.");
     if (!/^https?:\/\//i.test(destination))
         throw new Error("Only http and https URLs can be opened in the selected Safari tab.");
     tabs[tabIndex - 1].url = destination;

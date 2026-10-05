@@ -19,11 +19,13 @@ from safari_browser import SafariBrowser
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         page = 'two' if self.path.startswith('/two') else 'one'
+        long_value = 'a' * 2500 + 'LIVE_READY_AT_END'
         body = f'''<!doctype html><meta charset="utf-8">
         <title>Monterey Desktop browser verification</title>
         <h1>Fixture {page}</h1><p>Complete browser test text.</p>
         <a href="/two">Second fixture page</a>
         <input id="field" aria-label="Browser test field">
+        <textarea aria-label="Long readiness field">{long_value}</textarea>
         <button onclick="document.getElementById('result').textContent='Clicked '+document.getElementById('field').value">Test DOM click</button>
         <p id="result">Waiting</p>'''.encode()
         self.send_response(200)
@@ -59,6 +61,12 @@ async def verify(launcher, window_id, base):
             assert any(l['url'] == base + '/two' for l in links['links'])
             print('PASS live tab discovery, DOM text, and link URLs', flush=True)
             frame = decode(await client.call_tool('desktop_observe', {'window_id': window['cg_window_id'], 'include_image': False}))
+            ready = decode(await client.call_tool('desktop_act', {'frame_id':frame['frame_id'],
+                'actions':[{'kind':'wait_for','role':'AXTextArea','value_contains':'LIVE_READY_AT_END','timeout':2}],
+                'include_image':False}))
+            assert ready['completed_actions'] == 1
+            print('PASS live native readiness matches beyond character 2000', flush=True)
+            frame = ready
             result = await browser('evaluate', expected_url=base + '/one', script='''(() => {
                 document.querySelector('#field').value='Monterey ✓ 📬';
                 document.querySelector('button').click();
@@ -89,6 +97,30 @@ async def verify(launcher, window_id, base):
                 raise AssertionError('Navigation did not expose the second fixture body')
             assert text['ready_state']=='complete'
             print('PASS exact-tab navigation and new-body readiness', flush=True)
+            subprocess.run(['/usr/bin/osascript','-e',
+                '''on run argv
+                tell application "Safari"
+                    set targetWindow to first window whose id is (item 1 of argv as integer)
+                    make new tab at end of tabs of targetWindow with properties {URL:item 2 of argv}
+                end tell
+                end run''',str(window_id),base+'/two'],
+                capture_output=True, text=True, check=True, timeout=10)
+            for _ in range(30):
+                listing = decode(await client.call_tool('desktop_browser', {'operation':'tabs'}))['result']
+                owned = next(w for w in listing['windows'] if w['window_id']==window_id)
+                if sum(t['url']==base+'/two' for t in owned['tabs'])==2:
+                    break
+                await asyncio.sleep(.1)
+            else:
+                raise AssertionError('Duplicate fixture tab did not become ready')
+            for operation in ('read','links','evaluate','navigate'):
+                bad = await client.call_tool('desktop_browser', {'operation':operation, **target,
+                    'expected_url':base+'/two','script':'document.body.remove()','url':base+'/one'})
+                assert bad.isError and 'URL is ambiguous' in str(bad.content)
+            listing = decode(await client.call_tool('desktop_browser', {'operation':'tabs'}))['result']
+            owned = next(w for w in listing['windows'] if w['window_id']==window_id)
+            assert len(owned['tabs'])==2 and all(t['url']==base+'/two' for t in owned['tabs'])
+            print('PASS live duplicate-URL refusal for reading, links, scripts and navigation', flush=True)
 
 
 def main():

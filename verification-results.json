@@ -1,5 +1,5 @@
 {
-  "live_safari_checks": "passed; installed v1.6.1 browser tools against owned localhost fixture",
+  "live_safari_checks": "passed; installed v1.6.2 browser and native readiness tools against owned localhost fixture",
   "installed_mcp_checks": "passed",
   "timing_medians_ms": {
     "old_image_ms": 734,
@@ -26,7 +26,7 @@
   "scope": "Same Mac/display; screenshot capture and local observation, excludes model/network latency.",
   "moved_window_guard": "passed",
   "codex_strict_config_and_skill_discovery": "passed",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "open_source_upgrade": {
     "live_safari": "passed",
     "two_window_targeting": "passed",
@@ -132,10 +132,27 @@
     "native_feedback_and_presentation_regressions": "passed",
     "dependencies_and_skill_links": "passed",
     "live_browser": "passed; discovery/text/links/Unicode DOM fill and click/exact-tab navigation/readiness/target and URL guards/stale native frame refusal/output truncation/page exception and partial mutation reporting",
-    "scope": "Actual installed MCP launcher and disposable localhost Safari fixture, closed after tests. No real mail mutation during fixture checks. existing signed-in tab confirmed separately. Prior releases cover native/background/Spaces regressions.",
+    "email_100_message_check": "not completed in this run; SFUSD tab changed independently during testing, awaiting ownership clarification",
+    "scope": "Actual installed MCP launcher and disposable localhost Safari fixture, closed after tests. No real mail mutation during fixture checks. SFUSD tab confirmed separately. Prior releases cover native/background/Spaces regressions.",
     "installed_mcp_launcher": "passed; six tools, browser schema/annotations, permission status and unpaused state",
     "source_cache_match": "passed",
-    "safari_javascript_permission": "verified enabled by successful page execution on existing signed-in Safari tab and localhost fixture",
+    "safari_javascript_permission": "verified enabled by successful page execution on signed-in SFUSD tab and localhost fixture",
     "independent_luna_checks": "passed; twelve offline tests, installed 1.6.1 six-tool schema/annotations, exact source/cache comparison; no Safari actions"
+  },
+  "reliability_fixes": {
+    "date": "2026-10-05",
+    "version": "1.6.2",
+    "platform_scope": "macOS Monterey only",
+    "offline_browser_tests": 15,
+    "offline_native_readiness_tests": 7,
+    "same_url_tab_guard": "passed; MCP preflight and inside Apple Event, mocked reordered tabs and live duplicate-URL Safari tabs",
+    "full_value_readiness": "passed; actual installed MCP wait_for matches textarea suffix beyond character 2000",
+    "secure_value_exclusion": "passed; mocked secure field and nonsecure-to-secure transition",
+    "readiness_deadline": "passed; slow native-value reads stop before traversing the whole tree",
+    "native_state_feedback_and_compact_output": "passed; offline regression checks",
+    "live_browser_regressions": "passed; DOM text, links, Unicode fill/click, stale frame and target/URL guards, partial script errors, output truncation, exact-tab navigation and new-body readiness",
+    "fixture_cleanup": "owned localhost Safari window closed in finally",
+    "scope": "Two reproduced defects fixed. This is not an exhaustive audit or a new certification of background input, other apps, fullscreen or multiple displays.",
+    "tradeoff": "Browser read/links/evaluate/navigate now refuse target URLs duplicated within the selected window. Use native controls for those tabs."
   }
 }

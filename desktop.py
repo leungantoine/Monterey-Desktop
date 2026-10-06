@@ -161,6 +161,35 @@ class PlanStep(ActionModel):
         return self
 
 
+class NativeReadSelector(ActionModel):
+    name: str | None = Field(default=None,max_length=500)
+    role: str | None = Field(default=None,max_length=100)
+    identifier: str | None = Field(default=None,max_length=500)
+    value_contains: str | None = Field(default=None,max_length=2000)
+    enabled: bool | None = None
+
+    @model_validator(mode='after')
+    def nonempty(self):
+        if not any((self.name,self.role,self.identifier,self.value_contains)):
+            raise ValueError('A native read selector requires a nonempty name, role, identifier or value_contains.')
+        return self
+
+
+class BrowserStep(ActionModel):
+    kind: Literal['click','replace_text','wait_for']
+    selector: str = Field(min_length=1,max_length=2000)
+    text: str | None = Field(default=None,max_length=4000)
+    text_contains: str | None = Field(default=None,max_length=2000)
+
+    @model_validator(mode='after')
+    def valid_step(self):
+        if not self.selector.strip():raise ValueError('Use a nonempty CSS selector.')
+        if self.kind=='replace_text' and self.text is None:raise ValueError('replace_text requires text.')
+        if self.kind!='replace_text' and self.text is not None:raise ValueError('Only replace_text accepts text.')
+        if self.kind!='wait_for' and self.text_contains is not None:raise ValueError('Only wait_for accepts text_contains.')
+        return self
+
+
 Action = Annotated[Union[Click, Move, Drag, TypeText, Key, Scroll, Wait, OpenURL,
                          Activate, Press, Focus, SetValue, WaitFor, ReplaceText], Field(discriminator='kind')]
 ACTIONS = TypeAdapter(list[Action])
@@ -636,7 +665,7 @@ class Desktop:
         if isinstance(action, (Press, Focus, SetValue, Drag, Scroll)):
             self.background_visual_focus = False
         if isinstance(action, Press):
-            self.ui.press(self.references, action.element_id)
+            self.native_press(action.element_id)
             result['delivery'] = 'accessibility'
         elif isinstance(action, Focus):
             self.background_focus(action.element_id)
@@ -680,7 +709,7 @@ class Desktop:
                     if b and 'AXPress' in node.get('actions',[]) and b['x'] <= start.x < b['x']+b['width'] and b['y'] <= start.y < b['y']+b['height']:
                         candidates.append(element_id)
                 if action.button == 'left' and action.clicks == 1 and len(candidates) == 1:
-                    self.ui.press(self.references,candidates[0])
+                    self.native_press(candidates[0])
                     result['delivery'] = 'accessibility'
                     self.background_visual_focus = False
                 else:
@@ -743,7 +772,7 @@ class Desktop:
             self.ui.activate(action.pid, lambda: self.check(inputs=True))
             self.expected_pid = action.pid
         elif isinstance(action, Press):
-            self.ui.press(self.references, action.element_id)
+            self.native_press(action.element_id)
         elif isinstance(action, Focus):
             self.ui.focus(self.references, action.element_id, lambda: self.check(inputs=True))
             self.expected_pid = (front_app() or {}).get('pid')
@@ -831,6 +860,11 @@ class Desktop:
                 self.ui.activate(safari['pid'], lambda: self.check(inputs=True))
                 self.expected_pid = safari['pid']
 
+    def native_press(self,element_id):
+        deadline=getattr(self,'plan_deadline',None)
+        timeout=.5 if deadline is None else min(.5,deadline-time.monotonic())
+        self.ui.press(self.references,element_id,timeout=timeout)
+
     def verify_replacement(self, action, check):
         element, node = self.ui.resolve(self.references, action.element_id)
         if 'Secure' in node.get('subrole', ''):
@@ -888,7 +922,7 @@ class Desktop:
                     'next_offset':end if end<len(text) else None,'total_chars':len(text),
                     'page_truncated':end<len(text)}
 
-    def plan(self, steps, frame_id, mode='foreground', timeout=20):
+    def plan(self, steps, frame_id, mode='foreground', timeout=20, summary=False, read_selector=None, max_read_chars=20000):
         """Resolve selectors afresh and execute a bounded plan on one pinned window."""
         with self.lock:
             self.check(inputs=True)
@@ -898,6 +932,10 @@ class Desktop:
                 raise ValueError('Invalid plan mode, timeout (0–30s) or step count (1–20).')
             # Validate the complete shape before any step can send input.
             steps=[PlanStep.model_validate(s) for s in steps]
+            if read_selector is not None:
+                if not summary:raise ValueError('read_selector requires feedback=summary.')
+                read_selector=NativeReadSelector.model_validate(read_selector)
+            if not 1<=max_read_chars<=100000:raise ValueError('max_read_chars must be 1–100000.')
             original=self.frame.copy()
             before_references=self.references.copy()
             before_ui=self.frame['ui']
@@ -909,6 +947,8 @@ class Desktop:
             self.background_visual_focus=False
             def guard():
                 self.check(inputs=True)
+                if (Q.CGSessionCopyCurrentDictionary() or {}).get('CGSSessionScreenIsLocked'):
+                    raise RuntimeError('Unlock the Mac locally before a native plan.')
                 if self.display_geometry()!=original['display']:
                     raise RuntimeError('Display geometry changed during the native plan.')
                 self.check_background() if mode=='background' else self.check_focus()
@@ -939,6 +979,26 @@ class Desktop:
                     if step.kind=='replace_text' and 'Secure' in node.get('subrole',''):
                         outcome='delivered_secure_unverified'
                     evidence.append({'kind':step.kind,'role':node['role'],'outcome':outcome})
+                if summary:
+                    guard()
+                    if read_selector is not None:
+                        s=read_selector
+                        _,refs,node=self.ui.find_unique(original['target_pid'],s.name,s.role,s.value_contains,s.enabled,
+                            min(3,self.plan_deadline-time.monotonic()),lambda:self.check(inputs=True),
+                            window_bounds=original['viewport'],window_id=original['window_id'],identifier=s.identifier,selector_only=True)
+                        root=refs[node['id']][0]
+                    else:
+                        root=self.ui.window(original['target_pid'],original['viewport'],original['window_id'])
+                    guard()
+                    reading=self.ui.read_text(root,lambda:self.check(inputs=True),5000,min(2,self.plan_deadline-time.monotonic()))
+                    guard()
+                    text=reading.pop('text')
+                    reading.update(text=text[:max_read_chars],total_chars=len(text),page_truncated=len(text)>max_read_chars)
+                    metadata={'window_id':original['window_id'],'target_app_pid':original['target_pid'],
+                              'plan':{'completed_steps':completed,'steps':evidence,'mode':mode},
+                              'reading':reading,'frame_expired':True}
+                    self.frame=None;self.references={};self.read_cache=None
+                    return metadata,None
                 options=original['config'].copy()
                 options.update(window_id=original['window_id'],include_image=False)
                 metadata,image=self.observe(**options)
@@ -1040,7 +1100,8 @@ def mcp_server(desktop):
         'and verify outcomes; never blindly replay partial input. Foreground is default. '
         'Explicit background mode pins another app window and yields on takeover; all-Space scope is opt-in. '
         'For Safari, discover tabs once and pass expected_url for faster guarded operations. '
-        'Use navigate_read for guarded navigation/readiness/reading and desktop_plan for fresh-selector native steps. '
+        'Use navigate_read for navigation/wait/read, act_read for DOM actions/wait/read, and desktop_plan for fresh native selectors. '
+        'Use native feedback=summary with read_selector for a small final result; observe again before more input. '
         'Prefer replace_text for verified input and feedback=text for one-call open/read. '
         'See the Monterey Desktop skill for limits and recovery.'
     ))
@@ -1116,7 +1177,7 @@ def mcp_server(desktop):
         return [TextContent(type='text',text=encode(desktop.read(frame_id,element_id,max_chars,offset,max_nodes,timeout)))]
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True))
-    def desktop_plan(steps: list[PlanStep], frame_id: str, mode: Literal['foreground','background']='foreground', timeout: float = Field(default=20,gt=0,le=30), feedback: Literal['controls','text']='text', ui_query: str | None = Field(default=None,max_length=200)) -> list:
+    def desktop_plan(steps: list[PlanStep], frame_id: str, mode: Literal['foreground','background']='foreground', timeout: float = Field(default=20,gt=0,le=30), feedback: Literal['controls','text','summary']='text', ui_query: str | None = Field(default=None,max_length=200), read_selector: NativeReadSelector | None = None, max_read_chars: int = Field(default=20000,ge=1,le=100000)) -> list:
         """Execute 1–20 authorized native steps, resolving unique selectors afresh after each UI change.
 
         Requires a latest exact window frame; foreground requires that window focused. Supports
@@ -1125,9 +1186,13 @@ def mcp_server(desktop):
         Complete traversal and uniqueness are required; pause/focus/geometry/Space guards remain.
         Never send unapproved actions in a plan. Failure stops without retries, invalidates the
         frame and reports partial completion. Background stays in another app's pinned window.
+        summary returns final native text/evidence without another full control snapshot;
+        optional read_selector scopes it. Summary expires the frame; observe before more input.
         """
         with desktop.lock:
-            result=desktop.plan(steps,frame_id,mode,timeout)
+            result=desktop.plan(steps,frame_id,mode,timeout,summary=feedback=='summary',read_selector=read_selector,max_read_chars=max_read_chars)
+            if feedback=='summary':
+                return [TextContent(type='text',text=encode(result[0]))]
             if feedback=='text':
                 try:
                     result[0]['reading']=desktop.read(result[0]['frame_id'])
@@ -1146,7 +1211,7 @@ def mcp_server(desktop):
         return desktop.status()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True))
-    def desktop_browser(operation: Literal['tabs','read','links','evaluate','navigate','navigate_read'] = 'tabs', window_id: int | None = None, tab_index: int | None = None, script: str | None = Field(default=None, max_length=200000), url: str | None = None, space_scope: Literal['active','all'] = 'active', max_output_chars: int = Field(default=30000, ge=1, le=1000000), expected_url: str | None = None, ready_selector: str | None = Field(default=None,max_length=2000), text_contains: str | None = Field(default=None,max_length=2000), read_selector: str | None = Field(default=None,max_length=2000), timeout: float = Field(default=10,gt=0,le=30)) -> list:
+    def desktop_browser(operation: Literal['tabs','read','links','evaluate','navigate','navigate_read','act_read'] = 'tabs', window_id: int | None = None, tab_index: int | None = None, script: str | None = Field(default=None, max_length=200000), url: str | None = None, space_scope: Literal['active','all'] = 'active', max_output_chars: int = Field(default=30000, ge=1, le=1000000), expected_url: str | None = None, ready_selector: str | None = Field(default=None,max_length=2000), text_contains: str | None = Field(default=None,max_length=2000), read_selector: str | None = Field(default=None,max_length=2000), timeout: float = Field(default=10,gt=0,le=30), steps: list[BrowserStep] | None = None) -> list:
         """Exact-tab Safari DOM/links, navigation and JavaScript in the existing profile.
 
         Discover tabs once; use its Safari window_id and 1-based tab_index (not capture IDs).
@@ -1161,6 +1226,9 @@ def mcp_server(desktop):
         navigate_read navigates once, waits for ready_selector/text_contains, then returns
         read_selector-scoped text in one call. Requires expected_url and explicit readiness;
         redirects, ambiguity, lock/pause or changed targets stop without retrying navigation.
+        act_read accepts 1–20 click/replace_text/wait_for steps with unique visible CSS
+        selectors, waits for ready_selector/text_contains and reads scoped text. It requires
+        expected_url; same-page workflows need no caller JavaScript or intermediate agent polls.
         """
         with desktop.lock:
             desktop.check()
@@ -1216,9 +1284,12 @@ def mcp_server(desktop):
                         raise ValueError('Safari tab URL is ambiguous within this window. Use native controls or give the intended tab a distinct URL before browser scripting.')
                 if operation=='evaluate' and script is None:raise ValueError('evaluate requires script.')
                 if operation in ('navigate','navigate_read') and url is None:raise ValueError('navigate requires url.')
-                if operation=='navigate_read' and (not expected_url or not (ready_selector or text_contains)):
-                    raise ValueError('navigate_read requires expected_url and ready_selector or text_contains.')
-                if operation in ('evaluate','navigate','navigate_read'):
+                if operation in ('navigate_read','act_read') and (not expected_url or not (ready_selector or text_contains)):
+                    raise ValueError('Browser workflows require expected_url and ready_selector or text_contains.')
+                if operation=='act_read' and (steps is None or not 1<=len(steps)<=20):
+                    raise ValueError('act_read requires 1–20 steps.')
+                if operation!='act_read' and steps is not None:raise ValueError('steps requires operation=act_read.')
+                if operation in ('evaluate','navigate','navigate_read','act_read'):
                     desktop.check(inputs=True)
                     # Scripts may mutate the page even when returning an error.
                     desktop.frame = None
@@ -1229,7 +1300,7 @@ def mcp_server(desktop):
                 elif operation=='evaluate':
                     if script is None:raise ValueError('evaluate requires script.')
                     result=browser.evaluate(window_id,tab_index,script,checked_url)
-                elif operation=='navigate_read':
+                elif operation in ('navigate_read','act_read'):
                     target_cg=browser_targets[window_id]['cg_window_id']
                     def workflow_guard():
                         desktop.check(inputs=True)
@@ -1237,9 +1308,12 @@ def mcp_server(desktop):
                             raise RuntimeError('Unlock the Mac locally before browser automation.')
                         if not desktop.window_in_scope(target_cg,safari_pid,space_scope):
                             raise RuntimeError('Browser workflow target disappeared or left the selected Space scope.')
-                    result=browser.navigate_read(window_id,tab_index,url,checked_url,
-                        ready_selector=ready_selector,text_contains=text_contains,read_selector=read_selector,
-                        timeout=timeout,check=workflow_guard)
+                    options={'ready_selector':ready_selector,'text_contains':text_contains,'read_selector':read_selector,
+                             'timeout':timeout,'check':workflow_guard}
+                    if operation=='act_read':
+                        result=browser.act_read(window_id,tab_index,[s.model_dump(exclude_none=True) for s in steps],checked_url,**options)
+                    else:
+                        result=browser.navigate_read(window_id,tab_index,url,checked_url,**options)
                 else:
                     if url is None:raise ValueError('navigate requires url.')
                     result=browser.navigate(window_id,tab_index,url,checked_url)

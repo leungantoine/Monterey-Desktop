@@ -4,7 +4,7 @@ A personal Codex plugin for this Intel Mac running macOS Monterey. It bundles a 
 
 ## Quick start from GitHub
 
-This repository contains version 1.8.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
+This repository contains version 1.9.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
 
 Create the shared Python environment and install the pinned dependencies:
 
@@ -20,7 +20,7 @@ codex plugin add monterey-desktop@monterey-desktop
 
 Start a new Codex session. Grant Screen Recording and Accessibility to the process hosting the helper when macOS requests them. Safari page scripting also needs **Allow JavaScript from Apple Events** in Safari's developer settings and macOS Automation permission. Enabling that preference can require local Touch ID or password authentication.
 
-The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.8.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
+The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.9.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
 
 Run the offline checks from the cloned repository:
 
@@ -39,7 +39,7 @@ Live desktop tests create temporary fixtures and interact with Safari. Their det
 - Editable plugin source: `~/.codex/plugins/monterey-desktop/`.
 - Bundled instructions: `skills/monterey-desktop/SKILL.md`.
 - Personal marketplace: `~/.agents/plugins/marketplace.json`, named `personal-local`.
-- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.8.0/`.
+- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.9.0/`.
 - Python environment and shared pause state: `~/.local/share/monterey-desktop/`.
 
 Codex loads its installed copy. Edit the source, then run the plugin add command below to refresh that copy. The virtual environment stays outside the plugin cache so reinstalls do not relocate Python or duplicate dependencies.
@@ -47,6 +47,19 @@ Codex loads its installed copy. Edit the source, then run the plugin add command
 ## Use
 
 Start a new Codex session after installation. Ask: “Use Monterey Desktop to open Safari and go to Google Classroom.” The skill can be selected explicitly or discovered for local desktop tasks.
+
+Version 1.9.0 adds faster workflows for native apps and Safari. Native plans now query only selector attributes during full bounded traversal and hydrate the unique target before input. `feedback="summary"` skips the final control inventory and returns bounded text, optionally scoped by `read_selector`; the frame expires, so observe again before more input. Safari `act_read` accepts explicit CSS click/replace/wait steps, handles delayed controls, waits for an expected result, and reads scoped text in one call. It requires an exact source URL throughout. Partial failures report acknowledged steps and never replay input. Invalid JavaScript-result errors now suggest an IIFE and warn that input may have run.
+
+An ordinary AppKit button exposed an 80 ms Accessibility press timeout in 1.8: the click ran despite the error. Native presses now use a separate maximum 500 ms mutation timeout, bounded by a plan's remaining deadline, while queries retain their 80 ms timeout. A failed press still is never retried. This fixes the reproduced fixture case; slower apps can still fail after partial input.
+
+Three samples per strategy through installed MCP launchers on this Monterey Mac:
+
+| Complete task | Previous strategy | Optimized strategy | Calls | Median local time | Response characters |
+| --- | --- | --- | --- | --- | --- |
+| Safari delayed form | 1.8 batched IIFEs and readiness/result polls | 1.9 `act_read` | 6 → 1 | 1,217 → 984 ms | 654 → 347 |
+| AppKit delayed form (no web view) | 1.9 two ID batches with combined reading | 1.9 scoped summary plan | 2 → 1 | 1,153 → 1,046 ms | 18,975 → 686 |
+
+The native result returns 96.4% less text and runs about 9.3% faster locally than the two-batch strategy; ordinary 1.9 plans also complete in one call (median 1,109 ms). Background summary plans passed isolation checks but took 1,761 ms. The full native task compares two strategies within 1.9 because unmodified 1.8 rejects the ordinary button press; it is not a cross-version latency claim. A separate one-step native readiness/read comparison changed only 1,871 → 1,840 ms. See [native samples](native-performance-results.json), [browser samples](browser-action-results.json), and [workflow examples](skills/monterey-desktop/references/workflows.md). These owned fixtures verify Unicode input callbacks, delayed controls, complete outcomes, partial completion, frame expiration and guards. They measure local MCP time, call counts and text characters; total agent time and billed tokens were not measured. Results do not establish support for every app.
 
 Version 1.8.0 reduces agent round trips for complete tasks. `desktop_browser(operation="navigate_read")` navigates once, waits for an explicit visible selector/text condition, and returns scoped text in one call. New `desktop_plan` resolves unique native selectors afresh between UI changes, allowing newly revealed controls to be filled or pressed without intermediate observations. Plans require an exact pinned window, stop on guard/ambiguity/deadline errors, report partial completion, and never replay input. They support foreground and explicit background modes, with one final reading/control response. Use only already authorized steps and finish with an expected outcome condition. See [workflow examples](skills/monterey-desktop/references/workflows.md).
 
@@ -120,6 +133,8 @@ Removal leaves the source and shared Python environment in place. macOS permissi
 ~/.local/share/monterey-desktop/.venv/bin/python ~/.codex/plugins/monterey-desktop/desktop.py status
 ~/.local/share/monterey-desktop/.venv/bin/python ~/.codex/plugins/monterey-desktop/desktop.py observe --output /tmp/desktop.jpg
 ```
+
+`verify_native_speed.py` compares native strategies using `native_workflow_fixture.py`, a genuine AppKit-only application with delayed fields/result, a secure field and a separate window. Use `--baseline-root <v1.8.0-directory> --root <installed-directory> --output <results.json>`. It tests button reliability across releases, then compares regular batches, plans, summary and background summary in 1.9. `verify_browser_actions_live.py` takes the same options and compares available-group IIFEs plus polling against `act_read`, including ambiguity, read-only replacement, URL change, partial no-replay and stale-frame checks. Both close owned fixtures and restore the prior foreground window. Discovery/reset/focus is excluded consistently; sample counts default to three.
 
 `verify_workflows.py` runs offline workflow failure, fresh-target, complete-shape validation and exact-window/Space regression tests. `verify_workflows_live.py` compares split operations with the composite browser/native workflows through actual MCP launchers on owned localhost fixtures. It verifies delayed content, newly revealed fields, Unicode input callbacks, completed outcome text, secure omission, and partial-plan no-replay/frame invalidation. It closes its fixture and restores the prior foreground app/window. Use `--baseline-root <v1.7.0-directory> --root <installed-directory> --output <results.json>` to reproduce the comparison.
 

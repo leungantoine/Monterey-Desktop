@@ -1,7 +1,7 @@
 {
   "name": "monterey-desktop",
-  "version": "1.8.0",
-  "description": "Monterey desktop and Safari automation: guarded native plans, navigate/wait/read workflows, exact-tab DOM scripting, text and visual input.",
+  "version": "1.9.0",
+  "description": "Monterey-only desktop control with fast native summaries, guarded Safari action/wait/read workflows, Accessibility selectors and explicit background input.",
   "author": {
     "name": "Local"
   },

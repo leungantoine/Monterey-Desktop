@@ -1,5 +1,5 @@
 {
-  "live_safari_checks": "passed; installed v1.8.0 browser workflows, original foreground/native reading, and same-Space background plans/fixtures",
+  "live_safari_checks": "passed; installed v1.9.0 browser action workflows, original foreground/native reading, and same-Space background plans/fixtures",
   "installed_mcp_checks": "passed",
   "timing_medians_ms": {
     "old_image_ms": 734,
@@ -26,7 +26,7 @@
   "scope": "Same Mac/display; screenshot capture and local observation, excludes model/network latency.",
   "moved_window_guard": "passed",
   "codex_strict_config_and_skill_discovery": "passed",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "open_source_upgrade": {
     "live_safari": "passed",
     "two_window_targeting": "passed",
@@ -195,5 +195,33 @@
     "benchmark_baseline": "v1.7.0, browser split navigation/readiness/read and native best supported batching plus combined final reading",
     "performance_limits": "Model/network latency not measured. Native plan local median is slower than the best existing two-call batch; reduced calls/context can help total agent time.",
     "scope": "Monterey 12.7.6 Intel only; owned localhost Safari/native fixtures closed, prior foreground restored. No new live validation of other apps, other Spaces, fullscreen or multiple displays."
+  },
+  "workflow_optimization": {
+    "date": "2026-10-05",
+    "version": "1.9.0",
+    "platform_scope": "Intel macOS Monterey 12.7.6 only",
+    "offline_tests": 84,
+    "offline_workflow_tests": 36,
+    "offline_browser_tests": 22,
+    "offline_native_readiness_tests": 18,
+    "offline_focus_guard_tests": 8,
+    "state_feedback_regressions": "passed separately",
+    "browser_results": "browser-action-results.json",
+    "native_results": "native-performance-results.json",
+    "browser_actions": "passed; installed launcher, delayed controls/result, Unicode input callbacks, each click exactly once, scoped final reading in one call",
+    "browser_partial_failure": "passed; ambiguity/read-only/changed URL failures, acknowledged-step count, no replay and stale native frame refusal",
+    "browser_invalid_result_hint": "passed; expression/IIFE hint warns of possible partial execution",
+    "native_selector_scan": "passed; bounded complete traversal, query only required selector attributes, hydrate unique live handle, long exact labels, incomplete/ambiguous/changed/secure targets refused; transient per-attribute AX errors mark incomplete while unsupported leaf attributes remain valid",
+    "native_summary": "passed; actual AppKit-only app, delayed controls/result, Unicode input callbacks, secure omission, separate-window isolation, scoped text, final inventory omitted and frame expired",
+    "native_press_reliability": "passed; unmodified 1.8 reports -25204 after AppKit reset callback actually runs; 1.9 uses separate <=500ms mutation timeout, restores 80ms query timeout and never retries; failed presses warn of possible partial input",
+    "background_summary": "passed; AppKit-only same-Space fixture, foreground app and pointer preserved, secondary window unchanged",
+    "final_native_smoke": "passed; additional one-sample installed MCP run after per-attribute failure guard, all strategies and background summary",
+    "original_foreground_regressions": "passed through installed v1.9.0 launcher; seven-tool discovery and two-window isolation",
+    "same_space_background_regressions": "passed through installed v1.9.0 launcher; native plans, foreground/pointer/Space isolation and takeover",
+    "native_reading_efficiency_regressions": "passed through installed v1.9.0 launcher; compact/full, Unicode/empty replacement, input callbacks, selection, native reads and one-call open/read",
+    "installed_browser_regressions": "passed; exact-tab DOM/navigation/URL/duplicate/partial-error/truncation tests",
+    "dependencies_syntax_json_skill_links": "passed",
+    "methodology": "Three samples per benchmark strategy; discovery/reset/focus excluded consistently. Full native form compares 1.9 batches and 1.9 plans/summary because 1.8 cannot complete ordinary AppKit press. A separate unchanged readiness/read task compares 1.8 and 1.9. Model/network time and billed tokens not measured.",
+    "limits": "Owned Safari and genuine AppKit fixtures only, closed and prior foreground restored. No claim of all-app compatibility or elimination of every limitation. Other Spaces, fullscreen and multiple displays were not revalidated in this release."
   }
 }

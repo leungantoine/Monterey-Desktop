@@ -24,6 +24,31 @@ The examples use illustrative IDs/URLs; use actual discovery evidence. Readiness
 
 Navigation runs once. Each subsequent poll rechecks pause, permissions, lock, exact live window/Space, tab range, destination URL and duplicate URLs. Redirects or URL normalization can fail the exact destination guard. On failure, inspect the current tab before choosing a new operation. Use split operations for a task that needs intermediate decisions or an unknown redirected destination.
 
+## Safari actions, wait, read
+
+Use `act_read` for an already inspected in-page workflow. It sends input/change events for editable input/textarea replacements, clicks controls, waits for newly visible controls, and returns final text without separate agent polls:
+
+```json
+{
+  "operation": "act_read",
+  "window_id": 91,
+  "tab_index": 1,
+  "expected_url": "https://example.test/form",
+  "steps": [
+    {"kind": "replace_text", "selector": "#first", "text": "Example"},
+    {"kind": "click", "selector": "#show-details"},
+    {"kind": "replace_text", "selector": "#details", "text": "Authorized value"},
+    {"kind": "click", "selector": "#save"}
+  ],
+  "ready_selector": "#result",
+  "text_contains": "Saved Example",
+  "read_selector": "#result",
+  "timeout": 10
+}
+```
+
+Use 1–20 steps with unique visible CSS selectors. `wait_for` optionally accepts `text_contains` for its element. Hidden/missing/disabled controls wait within the whole deadline; ambiguity and read-only replacement fail. Only text-like input types and textarea are supported for replacement; use other tools for custom editors or controls. Final readiness and scoped reading follow the same rules as `navigate_read`. This workflow requires the same URL throughout; use separate navigation for page changes. Every poll checks desktop guards and resumes after acknowledged steps. Completed actions are never replayed. An error reports completed steps; the current step may also have run. Inspect before continuing. DOM mutations invalidate native frames.
+
 ## Native plans with newly revealed controls
 
 Observe an exact desktop capture `window_id` and retain the latest `frame_id`. Foreground plans require that same window already focused; use an authorized focus action and its resulting frame if needed. Safari IDs above are not desktop capture IDs.
@@ -49,8 +74,10 @@ The entire input shape is validated before input; target/capability checks happe
 
 Successful output includes completed steps, delivery/value/readiness evidence, state changes, and a fresh frame. `feedback="text"` adds native reading plus actionable controls; `feedback="controls"` skips the read. Secure values remain omitted; a secure replacement reports delivery without value verification. A press reporting delivery is not evidence that saving or submitting succeeded: end with an expected outcome condition.
 
+For a completed task in an ordinary native macOS app, choose `feedback="summary"` to skip the final full inventory and return only plan evidence and bounded native text. Add `read_selector` with name/role/identifier/value conditions to scope the result, for example `{"identifier":"result","role":"AXStaticText"}`. `max_read_chars` defaults to 20,000 (up to 100,000). Read selectors default to no enabled filter and require a fresh unique complete traversal. Unscoped summaries read the selected window. Summary output has `frame_expired=true`, no actionable IDs, and no image; observe again before more input. This path also works with explicit background plans under their existing guards.
+
 Failure invalidates native frames and reports completed steps; the current step may also have partially run. Observe actual state before continuing. Never replay a failed plan blindly. Do not put steps needing a new user decision or authorization into a plan.
 
 ## What the measurements mean
 
-The repository's `workflow-results.json` records complete local fixture tasks, MCP calls, and response characters. Initial discovery/focus setup is excluded consistently. Composite operations reduce model round trips and repeated context; local execution can still be slower because they resolve fresh selectors and check explicit outcomes. Model/network latency is not measured. Use the call reduction and local overhead together when assessing overall workflow speed.
+The repository's `workflow-results.json` records the 1.8 comparison; `native-performance-results.json` and `browser-action-results.json` record the 1.9 AppKit-only and Safari fixtures. Initial discovery/focus setup is excluded consistently. Composite operations reduce model round trips and repeated context; local execution can still be slower because they resolve fresh selectors and check explicit outcomes. Model/network latency is not measured. Use the call reduction and local overhead together when assessing overall workflow speed.

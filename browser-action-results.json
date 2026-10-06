@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-05",
+  "baseline_version": "1.8.0",
+  "optimized_version": "1.9.0",
+  "baseline": {
+    "runs": [
+      {
+        "elapsed_ms": 1217.3,
+        "tool_calls": 6,
+        "response_chars": 654
+      },
+      {
+        "elapsed_ms": 1200.5,
+        "tool_calls": 6,
+        "response_chars": 654
+      },
+      {
+        "elapsed_ms": 1236.9,
+        "tool_calls": 6,
+        "response_chars": 654
+      }
+    ],
+    "median_ms": 1217.3,
+    "median_tool_calls": 6,
+    "median_response_chars": 654
+  },
+  "optimized": {
+    "runs": [
+      {
+        "elapsed_ms": 984.2,
+        "tool_calls": 1,
+        "response_chars": 347
+      },
+      {
+        "elapsed_ms": 1013.3,
+        "tool_calls": 1,
+        "response_chars": 347
+      },
+      {
+        "elapsed_ms": 824.2,
+        "tool_calls": 1,
+        "response_chars": 347
+      }
+    ],
+    "median_ms": 984.2,
+    "median_tool_calls": 1,
+    "median_response_chars": 347
+  },
+  "scope": "Installed MCP launchers, owned Safari asynchronous form. Baseline batches each available group into one IIFE and polls expected readiness/result. Discovery/reset excluded; model/network time not measured. Unicode input events, exact single click counts and partial/ambiguity/read-only/URL/frame guards verified."
+}

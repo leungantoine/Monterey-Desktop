@@ -309,14 +309,21 @@ class NativeUI:
             raise ValueError('The target control is disabled.')
         return element, before
 
-    def press(self, references, element_id):
+    def press(self, references, element_id, timeout=.5):
         element, _ = self.resolve(references, element_id)
         error, actions = AX.AXUIElementCopyActionNames(element, None)
         if not error and 'AXPress' not in (actions or []):
             raise ValueError('This control does not advertise AXPress. Inspect its actions or use observed screenshot coordinates.')
-        error = AX.AXUIElementPerformAction(element, 'AXPress')
+        if timeout<=0:raise TimeoutError('The deadline expired before native press; no input was sent.')
+        # AppKit button highlighting/callbacks can exceed the 80ms query budget.
+        # Bound mutation separately and restore the fast query timeout afterward.
+        AX.AXUIElementSetMessagingTimeout(element,min(.5,timeout))
+        try:
+            error = AX.AXUIElementPerformAction(element, 'AXPress')
+        finally:
+            AX.AXUIElementSetMessagingTimeout(element,.08)
         if error:
-            raise RuntimeError(f'This control does not support native press (AX error {error}). Observe and use its screenshot coordinates instead.')
+            raise RuntimeError(f'Native press returned AX error {error}; it may have partially run. Inspect the outcome before further input; never blindly replay the press.')
 
     def set_value(self, references, element_id, value, check, allow_activation=True):
         element, before = self.resolve(references, element_id)
@@ -360,6 +367,44 @@ class NativeUI:
         # focused window on another Space cannot redirect the activation.
         self.activate(before['pid'], check)
 
+    def selector_snapshot(self,pid,check,name,identifier,enabled,seconds,window_bounds=None,window_id=None):
+        """Complete bounded traversal of selector attributes, without unrelated values/geometry."""
+        root=self.window(pid,window_bounds,window_id)
+        attributes=['AXRole','AXChildren']
+        if name is not None:attributes+=['AXTitle','AXDescription','AXHelp']
+        if identifier is not None:attributes+=['AXIdentifier']
+        if enabled is not None:attributes+=['AXEnabled']
+        queue=deque([(root,None,0)]);nodes=[];references={};visited=set();incomplete=False
+        deadline=time.monotonic()+seconds
+        while queue and len(nodes)<1000 and time.monotonic()<deadline:
+            check();element,parent,depth=queue.popleft()
+            identity=hash(element)
+            if identity in visited:continue
+            visited.add(identity)
+            error,values=AX.AXUIElementCopyMultipleAttributeValues(element,attributes,0,None)
+            data=dict(zip(attributes,values)) if not error and values is not None else {}
+            # Bulk reads can succeed overall while an individual attribute
+            # carries an AX error. Unsupported/no-value is normal for leaves;
+            # transient failures cannot establish a complete unique traversal.
+            for value in data.values():
+                if isinstance(value,AX.AXValueRef) and AX.AXValueGetType(value)==AX.kAXValueAXErrorType:
+                    ok,attribute_error=AX.AXValueGetValue(value,AX.kAXValueAXErrorType,None)
+                    if not ok or attribute_error not in (AX.kAXErrorAttributeUnsupported,AX.kAXErrorNoValue):
+                        incomplete=True
+            if not isinstance(data.get('AXRole'),str):
+                incomplete=True;continue
+            node={'id':f'e{len(nodes)}','pid':pid,'role':str(data['AXRole'])}
+            if parent is not None:node['parent']=parent
+            for key,attr in (('name','AXTitle'),('description','AXDescription'),('help','AXHelp'),('identifier','AXIdentifier')):
+                if isinstance(data.get(attr),str):node[key]=str(data[attr])
+            if isinstance(data.get('AXEnabled'),(bool,int)):node['enabled']=bool(data['AXEnabled'])
+            nodes.append(node);references[node['id']]=(element,node)
+            children=data.get('AXChildren');children=list(children) if hasattr(children,'__iter__') else []
+            if len(children)>400:incomplete=True
+            if depth<24:queue.extend((child,node['id'],depth+1) for child in children[:400])
+            elif children:incomplete=True
+        return {'pid':pid,'window_id':window_id_of(root),'elements':nodes,'truncated':bool(queue) or incomplete},references
+
     def find_unique(self, pid, name, role, value_contains, enabled, timeout, check, window_bounds=None, window_id=None, identifier=None, selector_only=False):
         deadline = time.monotonic()+timeout
         def exact_label(node,element,key,attribute,expected):
@@ -372,7 +417,11 @@ class NativeUI:
             return value==expected
         while True:
             check()
-            snapshot, references = self.snapshot(pid, check, limit=1000, seconds=min(2, max(0.01, deadline-time.monotonic())), window_bounds=window_bounds, window_id=window_id, capabilities=not selector_only)
+            seconds=min(2,max(.01,deadline-time.monotonic()))
+            if selector_only:
+                snapshot,references=self.selector_snapshot(pid,check,name,identifier,enabled,seconds,window_bounds,window_id)
+            else:
+                snapshot,references=self.snapshot(pid,check,limit=1000,seconds=seconds,window_bounds=window_bounds,window_id=window_id)
             matches = []
             values_complete = True
             for node in snapshot['elements']:
@@ -402,9 +451,23 @@ class NativeUI:
             if len(matches) == 1 and not snapshot['truncated'] and values_complete:
                 if selector_only:
                     check()
-                    # Scan labels/state for uniqueness, then query capabilities
-                    # only on the matched live handle needed by the next action.
-                    add_capabilities(references[matches[0]['id']][0],matches[0])
+                    node=matches[0];element=references[node['id']][0]
+                    current,_=describe(element,capabilities=True)
+                    if (current is None or current['role']!=node['role']
+                            or (enabled is not None and current.get('enabled')!=enabled)
+                            or (name is not None and not any(exact_label(current,element,key,attr,name)
+                                for key,attr in (('name','AXTitle'),('description','AXDescription'),('help','AXHelp'))))
+                            or (identifier is not None and not exact_label(current,element,'identifier','AXIdentifier',identifier))):
+                        raise RuntimeError('Native selector target changed during resolution; observe before retrying.')
+                    if value_contains is not None:
+                        check()
+                        if 'Secure' in str(get_attr(element,'AXSubrole') or ''):
+                            raise RuntimeError('Native readiness target became secure during resolution; observe before retrying.')
+                        value=get_attr(element,'AXValue')
+                        if not isinstance(value,(str,int,float,bool)) or value_contains not in str(value):
+                            raise RuntimeError('Native readiness value changed during resolution; observe before retrying.')
+                    identity={k:node[k] for k in ('id','pid','parent') if k in node}
+                    node.clear();node.update(current);node.update(identity)
                     check()
                 return snapshot, references, matches[0]
             if len(matches) > 1:

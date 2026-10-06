@@ -1,0 +1,152 @@
+{
+  "date": "2026-10-05",
+  "baseline_version": "1.8.0",
+  "optimized_version": "1.9.0",
+  "measurements": {
+    "baseline_press_probe": {
+      "error": true,
+      "response": "[TextContent(type='text', text='Error executing tool desktop_act: Batch stopped after 0 completed actions; the current action may also have partially run. Observe before retrying. This control does not support native press (AX error -25204). Observe and use its screenshot coordinates instead.', annotations=None, meta=None)]",
+      "elapsed_ms": 126.0,
+      "reset_event_observed": true
+    },
+    "optimized_press_probe": {
+      "error": false,
+      "response": "passed",
+      "elapsed_ms": 801.4,
+      "reset_event_observed": true
+    },
+    "baseline_wait_read": {
+      "runs": [
+        {
+          "elapsed_ms": 1883.5,
+          "tool_calls": 1,
+          "response_chars": 4562
+        },
+        {
+          "elapsed_ms": 1870.5,
+          "tool_calls": 1,
+          "response_chars": 4562
+        },
+        {
+          "elapsed_ms": 1867.9,
+          "tool_calls": 1,
+          "response_chars": 4562
+        }
+      ],
+      "median_ms": 1870.5,
+      "median_tool_calls": 1,
+      "median_response_chars": 4562
+    },
+    "optimized_wait_read": {
+      "runs": [
+        {
+          "elapsed_ms": 1839.5,
+          "tool_calls": 1,
+          "response_chars": 4562
+        },
+        {
+          "elapsed_ms": 1828.2,
+          "tool_calls": 1,
+          "response_chars": 4562
+        },
+        {
+          "elapsed_ms": 1936.8,
+          "tool_calls": 1,
+          "response_chars": 4562
+        }
+      ],
+      "median_ms": 1839.5,
+      "median_tool_calls": 1,
+      "median_response_chars": 4562
+    },
+    "optimized_batches": {
+      "runs": [
+        {
+          "elapsed_ms": 1152.8,
+          "tool_calls": 2,
+          "response_chars": 18975
+        },
+        {
+          "elapsed_ms": 1094.8,
+          "tool_calls": 2,
+          "response_chars": 18975
+        },
+        {
+          "elapsed_ms": 1173.8,
+          "tool_calls": 2,
+          "response_chars": 18975
+        }
+      ],
+      "median_ms": 1152.8,
+      "median_tool_calls": 2,
+      "median_response_chars": 18975
+    },
+    "optimized_plan": {
+      "runs": [
+        {
+          "elapsed_ms": 1133.6,
+          "tool_calls": 1,
+          "response_chars": 6403
+        },
+        {
+          "elapsed_ms": 1035.0,
+          "tool_calls": 1,
+          "response_chars": 6403
+        },
+        {
+          "elapsed_ms": 1108.9,
+          "tool_calls": 1,
+          "response_chars": 6403
+        }
+      ],
+      "median_ms": 1108.9,
+      "median_tool_calls": 1,
+      "median_response_chars": 6403
+    },
+    "optimized_summary": {
+      "runs": [
+        {
+          "elapsed_ms": 1045.5,
+          "tool_calls": 1,
+          "response_chars": 686
+        },
+        {
+          "elapsed_ms": 1029.1,
+          "tool_calls": 1,
+          "response_chars": 686
+        },
+        {
+          "elapsed_ms": 1064.3,
+          "tool_calls": 1,
+          "response_chars": 686
+        }
+      ],
+      "median_ms": 1045.5,
+      "median_tool_calls": 1,
+      "median_response_chars": 686
+    },
+    "optimized_summary_background": {
+      "runs": [
+        {
+          "elapsed_ms": 1760.9,
+          "tool_calls": 1,
+          "response_chars": 686
+        },
+        {
+          "elapsed_ms": 1733.8,
+          "tool_calls": 1,
+          "response_chars": 686
+        },
+        {
+          "elapsed_ms": 1775.8,
+          "tool_calls": 1,
+          "response_chars": 686
+        }
+      ],
+      "median_ms": 1760.9,
+      "median_tool_calls": 1,
+      "median_response_chars": 686
+    }
+  },
+  "scope": "Actual AppKit-only app, no web view. Installed MCP launchers. Unmodified 1.8/1.9 button reliability and readiness/read comparison. Full form compares regular 1.9 batches versus 1.9 plans/summary because 1.8 may reject ordinary AppKit presses. Unicode input callbacks, delayed UI, separate-window isolation, secure omission, summary frame invalidation and background foreground/pointer preservation verified. Setup/reset/focus excluded consistently; model/network time not measured."
+}

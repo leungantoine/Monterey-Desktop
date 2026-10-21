@@ -44,6 +44,20 @@ def completed(stdout: str = "", stderr: str = "", returncode: int = 0) -> subpro
 
 class SafariBrowserTests(unittest.TestCase):
     @unittest.skipUnless(Path('/usr/bin/osascript').exists(), 'Requires macOS JXA')
+    def test_non_document_windows_without_tabs_do_not_break_discovery(self):
+        mock = '''function Application(name){return {windows:function(){return [
+          {tabs:function(){return null;}},
+          {id:function(){return 91;},name:function(){return "Fixture";},bounds:function(){return {};},
+           currentTab:function(){return {index:function(){return 1;}};},activeTabIndex:function(){return 1;},
+           tabs:function(){return [{index:function(){return 1;},url:function(){return "https://example.test";},
+               name:function(){return "Fixture";},title:function(){return "Fixture";}}];}}
+        ];}};}\n'''
+        result=json.loads(bridge.SafariBrowser()._run(mock+bridge._TABS_SCRIPT))
+        self.assertEqual(len(result),1)
+        self.assertEqual(result[0]['window_id'],91)
+        self.assertTrue(result[0]['tabs'][0]['selected'])
+
+    @unittest.skipUnless(Path('/usr/bin/osascript').exists(), 'Requires macOS JXA')
     def test_duplicate_url_tabs_are_refused_before_script_or_navigation(self) -> None:
         mock = '''var tabA={url:function(){return "https://example.test/same";}};
         var tabB={url:function(){return "https://example.test/same";}};
@@ -294,6 +308,7 @@ class BrowserMcpSourceContractTests(unittest.TestCase):
 
 @unittest.skipUnless(Path('/System/Library/Frameworks/AppKit.framework').exists(), 'Requires macOS desktop modules')
 class BrowserTargetCacheTests(unittest.TestCase):
+    browser_choice = 'safari'
     def setUp(self):
         import desktop as module
         self.module=module
@@ -317,12 +332,13 @@ class BrowserTargetCacheTests(unittest.TestCase):
         self.browser.navigate.return_value={'url':'https://example.test/two'}
         self.windows=[{'pid':123,'window_id':191,'space_ids':[1],
                        'bounds':{'X':0,'Y':0,'Width':100,'Height':100}}]
-        self.apps=[{'pid':123,'bundle_id':'com.apple.Safari'}]
+        self.bundle_id = 'com.apple.Safari' if self.browser_choice == 'safari' else 'com.google.Chrome'
+        self.apps=[{'pid':123,'bundle_id':self.bundle_id}]
         self.companion=SimpleNamespace(lock=threading.RLock(),check=Mock(),frame='before',
             references={'before':True},read_cache='before',windows=lambda scope:self.windows)
         self.locked={}
         patches=[patch('mcp.server.fastmcp.FastMCP',return_value=Server()),
-            patch.object(module,'SafariBrowser',return_value=self.browser),
+            patch.object(module,'SafariBrowser' if self.browser_choice == 'safari' else 'ChromeBrowser',return_value=self.browser),
             patch.object(module,'running_apps',side_effect=lambda:self.apps),
             patch.object(module.Q,'CGSessionCopyCurrentDictionary',side_effect=lambda:self.locked)]
         for mocked in patches:
@@ -331,7 +347,7 @@ class BrowserTargetCacheTests(unittest.TestCase):
         module.mcp_server(self.companion)
 
     def call(self,operation,**kwargs):
-        return self.registered['desktop_browser'](operation=operation,window_id=91,tab_index=1,
+        return self.registered['desktop_browser'](operation=operation,browser=self.browser_choice,window_id=91,tab_index=1,
             max_output_chars=30000,**kwargs)
 
     def test_explicit_url_reuses_window_mapping_without_relisting_tabs(self):
@@ -370,7 +386,7 @@ class BrowserTargetCacheTests(unittest.TestCase):
 
     def test_changed_process_is_refused_even_if_window_number_is_reused(self):
         self.call('tabs')
-        self.apps=[{'pid':124,'bundle_id':'com.apple.Safari'}]
+        self.apps=[{'pid':124,'bundle_id':self.bundle_id}]
         self.windows[0]['pid']=124
         with self.assertRaisesRegex(ValueError,'unavailable'):
             self.call('evaluate',expected_url=self.url,script='42')

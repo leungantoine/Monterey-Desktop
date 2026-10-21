@@ -4,7 +4,7 @@ A personal Codex plugin for this Intel Mac running macOS Monterey. It bundles a 
 
 ## Quick start from GitHub
 
-This repository contains version 1.9.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
+This repository contains version 1.10.0 of the local Codex plugin. It was tested on an Intel Mac running macOS Monterey 12.7.6 with Python 3.12 and a Codex CLI that supports plugins. Background input uses Monterey-specific private APIs; newer macOS versions and other apps have not been verified.
 
 Create the shared Python environment and install the pinned dependencies:
 
@@ -18,28 +18,29 @@ codex plugin marketplace add leungantoine/Monterey-Desktop
 codex plugin add monterey-desktop@monterey-desktop
 ```
 
-Start a new Codex session. Grant Screen Recording and Accessibility to the process hosting the helper when macOS requests them. Safari page scripting also needs **Allow JavaScript from Apple Events** in Safari's developer settings and macOS Automation permission. Enabling that preference can require local Touch ID or password authentication.
+Start a new Codex session. Grant Screen Recording and Accessibility to the process hosting the helper when macOS requests them. Safari and Chrome page scripting also need **Allow JavaScript from Apple Events** in the selected browser and macOS Automation permission. In Chrome, physically click View → Developer → Allow JavaScript from Apple Events; Chrome rejects automated clicks on this setting. Enable it separately in each Chrome profile you intend to automate. In Safari, use the Develop menu. Enabling that preference can require local Touch ID or password authentication.
 
-The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.9.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
+The GitHub marketplace is named `monterey-desktop`; its installed copy is under `~/.codex/plugins/cache/monterey-desktop/monterey-desktop/1.10.0/`. The launcher uses the shared environment above. The locations and `install.command` below describe the original author's `personal-local` installation. That installer expects the personal catalog and source location; use the quick start above for a fresh GitHub installation.
 
 Run the offline checks from the cloned repository:
 
 ```sh
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_browser.py
+"$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_chrome.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_feedback.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_native_wait.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_focus_guards.py
 "$HOME/.local/share/monterey-desktop/.venv/bin/python" verify_workflows.py
 ```
 
-Live desktop tests create temporary fixtures and interact with Safari. Their details and limitations are documented below.
+Live desktop tests create temporary fixtures and interact with the selected Safari or Chrome browser. Their details and limitations are documented below.
 
 ## Locations
 
 - Editable plugin source: `~/.codex/plugins/monterey-desktop/`.
 - Bundled instructions: `skills/monterey-desktop/SKILL.md`.
 - Personal marketplace: `~/.agents/plugins/marketplace.json`, named `personal-local`.
-- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.9.0/`.
+- Installed copy: `~/.codex/plugins/cache/personal-local/monterey-desktop/1.10.0/`.
 - Python environment and shared pause state: `~/.local/share/monterey-desktop/`.
 
 Codex loads its installed copy. Edit the source, then run the plugin add command below to refresh that copy. The virtual environment stays outside the plugin cache so reinstalls do not relocate Python or duplicate dependencies.
@@ -47,6 +48,17 @@ Codex loads its installed copy. Edit the source, then run the plugin add command
 ## Use
 
 Start a new Codex session after installation. Ask: “Use Monterey Desktop to open Safari and go to Google Classroom.” The skill can be selected explicitly or discovered for local desktop tasks.
+
+Version 1.10.0 adds Google Chrome to all seven `desktop_browser` operations: `tabs`, `read`, `links`, `evaluate`, `navigate`, `navigate_read`, and `act_read`. Set `browser="chrome"` on every Chrome call; `browser="safari"` remains the default for existing callers. The adapters share transport, JSON handling, bounded output, readiness and action workflows. Each browser has its own process/window cache, with the same live Space, exact-window, URL, tab-range, duplicate-URL, pause/lock and native-frame invalidation guards. It uses the regular browser profile without remote debugging or an extension. Chrome’s Apple Events JavaScript runs in an isolated context: DOM reads/actions and browser-owned async jobs work, while page-defined JavaScript globals are separate. Use DOM-based queries and outcome checks.
+
+```python
+desktop_browser(browser="chrome", operation="tabs")
+# Retain the verified browser window_id, tab_index and URL from that listing.
+desktop_browser(browser="chrome", operation="read", window_id=WINDOW_ID,
+                tab_index=TAB_INDEX, expected_url=VERIFIED_URL)
+```
+
+`verify_chrome.py` runs offline Chrome transport, real-interpreter JXA mocks, target/cache isolation and workflow failure tests. `verify_browser_parity_live.py --browser chrome` tests all seven operations through the actual MCP launcher using owned localhost windows, then closes them and restores the foreground app. Pass `--browser safari` to check the default adapter or `--root <installed-plugin-directory>` to verify a packaged copy. Browser scripting settings are never enabled by the bridge itself; follow the browser’s developer-menu instructions if disabled. Chrome background native input across Spaces has not been verified.
 
 Version 1.9.0 adds faster workflows for native apps and Safari. Native plans now query only selector attributes during full bounded traversal and hydrate the unique target before input. `feedback="summary"` skips the final control inventory and returns bounded text, optionally scoped by `read_selector`; the frame expires, so observe again before more input. Safari `act_read` accepts explicit CSS click/replace/wait steps, handles delayed controls, waits for an expected result, and reads scoped text in one call. It requires an exact source URL throughout. Partial failures report acknowledged steps and never replay input. Invalid JavaScript-result errors now suggest an IIFE and warn that input may have run.
 

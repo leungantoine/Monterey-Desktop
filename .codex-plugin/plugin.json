@@ -1,7 +1,7 @@
 {
   "name": "monterey-desktop",
-  "version": "1.9.0",
-  "description": "Monterey-only desktop control with fast native summaries, guarded Safari action/wait/read workflows, Accessibility selectors and explicit background input.",
+  "version": "1.10.0",
+  "description": "Monterey-only desktop control with fast native summaries, guarded Safari and Chrome action/wait/read workflows, Accessibility selectors and explicit background input.",
   "author": {
     "name": "Local"
   },
